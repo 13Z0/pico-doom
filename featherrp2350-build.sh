@@ -32,5 +32,5 @@ fi
 # Standalone (non-bootloader) build: doom owns flash from 0x10000000 and the
 # WHX is flashed at 0x10080000, matching the non-bootloader TINY_WAD_ADDR in
 # featherrp2350_cflags.h. (The bootloader build uses a different map, with the
-# WHX at 0x10400000 -- see featherrp2350-build-forbootloader.sh.)
+# WHX at 0x10200000 -- see featherrp2350-build-forbootloader.sh.)
 "$PICOTOOL" uf2 convert doom1.whx -t bin $BUILD/src/doom1-whx.uf2 -o 0x10080000 --family data

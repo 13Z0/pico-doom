@@ -105,13 +105,13 @@
 // Move the WAD base address way up since we have plenty of flash.
 // Standalone build: 0x10080000 (image at 0x10000000, WHX right after the
 // 512 KB slot).
-// pico-bootLoader build (BUILD_FOR_BOOTLOADER=1): 0x10400000, past the
-// emulator app partition so the WAD survives flashing other emulators —
-// fits the Feather's 8 MB flash (0x10400000 + 1.8 MB < 8 MB).
+// pico-bootLoader build (BUILD_FOR_BOOTLOADER=1): 0x10200000, behind the
+// 1.5 MB app slot -- the same address on every board, so one
+// doom1-whx-bootloader.uf2 serves them all.
 // See cmake/BootPartition.cmake for the full flash-map rationale.
 #undef TINY_WAD_ADDR
 #if BUILD_FOR_BOOTLOADER
-#define TINY_WAD_ADDR 0x10400000
+#define TINY_WAD_ADDR 0x10200000
 #else
 #define TINY_WAD_ADDR 0x10080000
 #endif

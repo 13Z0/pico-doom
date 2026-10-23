@@ -103,12 +103,13 @@
 // Move the WAD base address way up since we have plenty of flash.
 // Standalone build: 0x10080000 (as documented in README.md, "fruit jam
 // ALWAYS uses the offset of 0x10080000").
-// pico-bootLoader build (BUILD_FOR_BOOTLOADER=1): 0x10400000, past the
-// emulator app partition so the WAD survives flashing other emulators.
+// pico-bootLoader build (BUILD_FOR_BOOTLOADER=1): 0x10200000, behind the
+// 1.5 MB app slot -- the same address on every board, so one
+// doom1-whx-bootloader.uf2 serves them all.
 // See cmake/BootPartition.cmake for the full flash-map rationale.
 #undef TINY_WAD_ADDR
 #if BUILD_FOR_BOOTLOADER
-#define TINY_WAD_ADDR 0x10400000
+#define TINY_WAD_ADDR 0x10200000
 #else
 #define TINY_WAD_ADDR 0x10080000
 #endif

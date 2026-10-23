@@ -4,6 +4,25 @@ Add a section per release, headed with the tag. `release-notes.sh` extracts the
 section matching the tag being released and puts it in the GitHub release body,
 so keep the heading text exactly the tag name.
 
+## v0.4
+
+### Added
+
+- **PicoNES PCB:** the README describes the PicoNES PCB for the Pico 2 board,
+  by John Edgar Park: v2.6 with NES controller ports and v2.8 with SNES
+  controller ports. The release includes the Gerber files of both.
+
+### Changed
+
+- **pico-bootLoader:** on the Fruit Jam and the Feather RP2350, Doom under the
+  pico-bootLoader now keeps its WAD data at the same place in flash as on the
+  other boards, so one WAD data file serves every board. The pico-bootLoader's
+  updateAll installs it. Update Doom and its WAD data together.
+- Links, and the download address on the error screen, now point to the
+  PicoPlus-devel organisation on GitHub.
+
+Nothing changes for boards flashed directly over USB.
+
 ## v0.3
 
 ### Added

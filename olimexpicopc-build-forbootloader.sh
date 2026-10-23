@@ -39,4 +39,4 @@ fi
 # pico-bootLoader flash map: WHX lives at 0x10200000 (past the 1.5 MB app slot
 # reserved for the doom_tiny image at 0x10080000). Must match TINY_WAD_ADDR
 # in olimexpicopc_cflags.h (the BUILD_FOR_BOOTLOADER branch) and WHX_ADDR above.
-"$PICOTOOL" uf2 convert doom1.whx -t bin $BUILD/src/doom1-whx.uf2 -o "$WHX_ADDR" --family data
+"$PICOTOOL" uf2 convert doom1.whx -t bin $BUILD/src/doom1-whx-bootloader.uf2 -o "$WHX_ADDR" --family data

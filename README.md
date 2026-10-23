@@ -24,7 +24,8 @@ see [README-chocolate.md](README-chocolate.md).
 
 **You do not have to build anything.** Every
 [release](../../releases) ships ready-to-flash `.uf2` files for all five boards,
-plus the converted shareware WAD and the `whd_gen` host tool. Grab the newest
+plus the converted shareware WAD, the `whd_gen` host tool and the Gerber files
+of the [PicoNES PCB](#picones-pcb). Grab the newest
 one and you are playing in a couple of minutes.
 
 1. **Download two files** from the [latest release](../../releases/latest) —
@@ -67,9 +68,10 @@ Two variants of the firmware are attached to each release:
   alongside it. Requires PSRAM on the board; see
   [Full game from SD card](#full-game-from-sd-card-doom_tiny_full).
 
-The releases here are for flashing a board directly over USB. If you run the
-resident [pico-bootLoader](https://github.com/fhoedemakers/pico-bootLoader)
-menu, take Doom's files from *that* project's release instead — see
+The firmware here is for flashing a board directly over USB. If you run the
+resident [pico-bootLoader](https://github.com/PicoPlus-devel/pico-bootLoader)
+menu, take the Doom application from *that* project's release instead; its
+updateAll installs the matching WAD data on the SD card. See
 [Running under the pico-bootLoader](#running-under-the-pico-bootloader).
 
 The rest of this README covers building from source, converting WADs, and the
@@ -82,7 +84,7 @@ the build host is for compiling from source.
 
 **Hardware**
 
-* An Adafruit Fruit Jam (RP2350B) board — or one of the three
+* An Adafruit Fruit Jam (RP2350B) board — or one of the four
   [other supported boards](#other-supported-boards).
 * An HDMI display and cable.
 * At least one USB input device — a keyboard, a mouse, and/or a supported
@@ -158,13 +160,13 @@ There is a single `doom_tiny.uf2` that supports **all** input devices (USB
 keyboard, mouse, and gamepads). The old per-input variants
 (`doom_tiny_usb`, `doom_tiny_nost`, `doom_tiny_nost_usb`) no longer exist. USB
 input is handled by the
-[pico_shared](https://github.com/fhoedemakers/pico_shared) HID driver, shared
+[pico_shared](https://github.com/PicoPlus-devel/pico_shared) HID driver, shared
 with the pico-infonesPlus family of emulators.
 
 ## Running under the pico-bootLoader
 
 To run Doom under the resident
-[pico-bootLoader](https://github.com/fhoedemakers/pico-bootLoader) — the menu
+[pico-bootLoader](https://github.com/PicoPlus-devel/pico-bootLoader) — the menu
 that lives on an SD card and flashes/launches emulators — build with:
 
 ```bash
@@ -176,13 +178,14 @@ the WAD data further up in flash — see [Flash map](#flash-map)). Outputs land 
 a separate tree so the two builds don't clobber each other:
 
 * `build_bl_fruitjam/src/doom_tiny.uf2`
-* `build_bl_fruitjam/src/doom1-whx.uf2`
+* `build_bl_fruitjam/src/doom1-whx-bootloader.uf2`
 
-**Do not** drag these onto the Fruit Jam over USB. Instead place both files on
-the pico-bootLoader SD card under `/emu/<hwconfig>/` and let the menu flash them
-(Doom's main image plus its WHX companion). Every board's script emits the WAD
-under the fixed name `doom1-whx.uf2`, which is the name the bootloader looks up;
-the per-config SD folders keep the different boards' copies from colliding. See
+**Do not** drag these onto the Fruit Jam over USB. Instead place them on the
+pico-bootLoader SD card and let the menu flash them: `doom_tiny.uf2` under
+`/emu/<hwconfig>/`, and the WAD data `doom1-whx-bootloader.uf2` under
+`/roms/doom/` (the loader also accepts it next to `doom_tiny.uf2`). Every
+board's script emits the same WAD file, at the same address, and the
+pico-bootLoader's updateAll makes that file from `doom1.whx` in this repository. See
 the pico-bootLoader README for the SD-card layout and `emulators.txt`.
 
 ### Quitting
@@ -215,7 +218,7 @@ the 640×480 HDMI signal.
 bootloader, so it comes back as the `RPI-RP2` drive ready for a new `.uf2`.
 It saves unplugging the board and holding the physical BOOTSEL button every
 time you want to reflash, which adds up while developing. The equivalent item
-in [pico-infonesPlus](https://github.com/fhoedemakers/pico-infonesPlus)'
+in [pico-infonesPlus](https://github.com/PicoPlus-devel/pico-infonesPlus)'
 settings menu does the same thing.
 
 This is **not** the same as *Quit Game* above: quitting is a warm watchdog
@@ -283,7 +286,7 @@ Both live on the microSD card, on every board and every build:
 | Settings | `/settings_DOOM.dat` |
 
 The `/SAVES` directory is created on the first save. The naming follows
-[pico-infonesPlus](https://github.com/fhoedemakers/pico-infonesPlus), so one card
+[pico-infonesPlus](https://github.com/PicoPlus-devel/pico-infonesPlus), so one card
 can hold the saves of both without colliding.
 
 Saved games are the compressed format the port has always used, and are still
@@ -313,11 +316,9 @@ depends on which build you ran. These values come from `TINY_WAD_ADDR` in
 | Build | `doom_tiny` image | WHX (WAD) data |
 |-------|-------------------|----------------|
 | Standalone (`fruitjam-build.sh`) | `0x10000000` | `0x10080000` |
-| Bootloader (`fruitjam-build-forbootloader.sh`) | `0x10080000` | `0x10400000` |
+| Bootloader (`fruitjam-build-forbootloader.sh`) | `0x10080000` | `0x10200000` |
 
-These addresses are for the Fruit Jam. The other boards share the standalone map
-(WHX at `0x10080000`); their **bootloader** maps differ — the 4 MB Pico 2 boards
-(`adafruitdvisd`, `murmulatorm2`, `olimexpicopc`) place the WHX at `0x10200000`. See
+Every other board uses the same two maps. See
 [Other supported boards](#other-supported-boards).
 
 ## Converting a different WAD (`whd_gen`)
@@ -427,13 +428,16 @@ running those two scripts locally *is* testing the pipeline.
 ./release-notes.sh v1.0          # writes release-notes.md, the release body
 ```
 
-`buildAll.sh` builds the standalone and SD-card variant for all four boards,
+`buildAll.sh` builds the standalone and SD-card variant for all five boards,
 converts `doom1.whx` at the standalone flash offset, and copies the prebuilt
-`whd_gen` binaries in — 12 files in all. The pico-bootLoader variants are **not**
-released here: they are built in the
-[pico-bootLoader](https://github.com/fhoedemakers/pico-bootLoader) repository,
-which invokes `<board>-build-forbootloader.sh` itself and produces its own WHX at
-the offset matching each board's flash map.
+`whd_gen` binaries in — 14 files in all. The workflow then downloads the Gerber
+files of the [PicoNES PCB](#picones-pcb) from pico_shared and attaches them as
+well. The pico-bootLoader variants are **not** released here: they are built
+in the [pico-bootLoader](https://github.com/PicoPlus-devel/pico-bootLoader) repository,
+which invokes `<board>-build-forbootloader.sh` itself. Their WAD data is not
+released either: the pico-bootLoader's updateAll downloads `doom1.whx` from a
+tagged revision of this repository and converts it at the bootloader offset
+itself, so keep that file at the top of the repository.
 
 The runner needs `PICO_SDK_PATH`, `PICO_EXTRAS_PATH` and `PICO_PIO_USB_PATH` (set
 in the workflow to `/datalocal/pico/...`), plus `picotool` ≥ 2.2.0 on `PATH`.
@@ -462,20 +466,22 @@ warning rather than an error, so an unrelated commit cannot block a release.
 2. Commit, then dry-run on the runner without publishing anything:
    `gh workflow run BuildAndRelease.yml` (leave the `tag` input empty).
 3. `git tag vX.Y && git push origin vX.Y`.
+4. Release the pico-bootLoader after this one, not before: it builds Doom from
+   this repository's `main` branch.
 
 ## Other supported boards
 
 Besides the Fruit Jam, four more RP2350 HSTX boards from the
-[pico_shared](https://github.com/fhoedemakers/pico_shared) family are
+[pico_shared](https://github.com/PicoPlus-devel/pico_shared) family are
 supported. Each has its own pin header (`<tag>_cflags.h`) and script pair —
 `<tag>-build.sh` (standalone) and `<tag>-build-forbootloader.sh`
 (pico-bootLoader) — producing `build_<tag>/src/doom_tiny.uf2` and
 `build_<tag>/src/doom1-whx.uf2` (bootloader builds use
-`build_bl_<tag>/`).
+`build_bl_<tag>/` and name the WAD `doom1-whx-bootloader.uf2`).
 
 | Tag | HW_CONFIG | Board | USB host | Audio | Legacy pads |
 |-----|-----------|-------|----------|-------|-------------|
-| `adafruitdvisd` | 2 | Pico 2 + Adafruit DVI Breakout + SD breakout (breadboard or PCB) | native USB (OTG adapter) | HDMI + optional PCM5100A on GPIO 26/27 | 2× NES/SNES |
+| `adafruitdvisd` | 2 | Pico 2 + Adafruit DVI Breakout + SD breakout (breadboard or [PicoNES PCB](#picones-pcb)) | native USB (OTG adapter) | HDMI + optional PCM5100A on GPIO 26/27 | 2× NES/SNES |
 | `murmulatorm2` | 13 | Murmulator M2 (Pico 2 module) | native USB (OTG adapter) | HDMI + PCM5100A | 2× NES/SNES, Wii (GPIO 0/1) |
 | `featherrp2350` | 14 | Adafruit Feather RP2350 + TLV320DAC3100 breakout | PIO-USB on GPIO 24/25 (USB Host FeatherWing) | HDMI + TLV320 | Wii (STEMMA QT, GPIO 2/3) |
 | `olimexpicopc` | 15 | Olimex RP2040-PICO-PC with a Raspberry Pi Pico 2 | native USB (USB-A socket) | HDMI + PWM audio jack (GPIO 28/27) | 1× NES/SNES (UEXT: CLK 5, LAT 9, DATA 20) |
@@ -503,12 +509,12 @@ Notes:
   bus is shared with the TLV320 codec, so the pad is brought up first, before
   the codec — an uninitialized pad on the bus would otherwise make every DAC
   register access time out.
-* **Flash size for bootloader builds** — the bootloader map is sized per board.
-  Fruit Jam (16 MB) and Feather (8 MB) place the WHX at `0x10400000`. The three
-  Pico 2 boards (`adafruitdvisd`, `murmulatorm2`, `olimexpicopc`) cap the map to
-  the 4 MB chip: a 1.5 MB app slot at `0x10080000` and the WHX at `0x10200000`
-  (ending ~`0x103B7900`, comfortably under the 4 MB mark), so their bootloader
-  builds run on a **genuine 4 MB Pico 2** as well as larger clone modules. On the
+* **Flash size for bootloader builds** — every board uses the map of the 4 MB
+  chip: a 1.5 MB app slot at `0x10080000` and the WHX at `0x10200000` (ending
+  `0x103B7898`, comfortably under the 4 MB mark). The bootloader builds of the
+  three Pico 2 boards (`adafruitdvisd`, `murmulatorm2`, `olimexpicopc`) therefore
+  run on a **genuine 4 MB Pico 2** as well as larger clone modules, and one
+  `doom1-whx-bootloader.uf2` serves every board. On the
   Olimex board the last 260 KB of flash (from `0x103BF000`) hold pico-launcher;
   the WHX ends about 30 KB below it. Standalone builds (WHX at `0x10080000`) fit
   every board.
@@ -519,13 +525,91 @@ Notes:
   strict HDMI sinks may show occasional sparkles; the PIO-USB boards keep the
   dedicated 126 MHz PLL_USB HSTX clock.
 
+## PicoNES PCB
+
+The `adafruitdvisd` board can be built on the PicoNES PCB by John Edgar Park
+instead of a breadboard, which turns it into a finished console with two
+controller ports and a case. The PCB comes in two versions, which differ only in
+the controller ports: **v2.6** with NES controller ports and **v2.8** with SNES
+controller ports. Parts lists, ordering instructions, assembly notes, the pin
+assignment and the 3D-printed case are described in the
+[PCB README](https://github.com/PicoPlus-devel/pico_shared/blob/main/PCB/README.md).
+The Gerber files of both versions are attached to every
+[release](../../releases).
+
+| Design | Picture | Controller ports | Designed by |
+|--------|---------|------------------|-------------|
+| PicoNES v2.6 | <img src="https://raw.githubusercontent.com/PicoPlus-devel/pico_shared/main/PCB/images/picones_v2.6_assembled.jpg" width="240" alt="PicoNES v2.6 with a Pimoroni Pico Plus 2"><br><sub>See note</sub> | 2 × NES | [John Edgar Park](https://twitter.com/johnedgarpark) |
+| PicoNES v2.8 | <img src="https://raw.githubusercontent.com/PicoPlus-devel/pico_shared/main/PCB/images/picones_v2.8s_assembled.jpg" width="240" alt="PicoNES v2.8 with SNES controller ports"><br><sub>See note</sub> | 2 × SNES | [John Edgar Park](https://twitter.com/johnedgarpark) |
+
+> [!NOTE]
+> The PicoNES v2.6 and v2.8 are shown with a Pimoroni Pico Plus 2. A Raspberry
+> Pi Pico 2 can also be fitted; `doom_tiny_full` needs the PSRAM of the Pico
+> Plus 2.
+
+The other designs in the PCB README, the PicoNES Mini and PicoNES Micro, carry
+boards this port is not built for.
+
+> [!NOTE]
+> Sellers on AliExpress have copied the PicoNES design and sell ready-made
+> boards. For questions about those, contact the seller.
+
+* **Mounting** — a Pico 2 can be soldered flat onto the PCB or mounted on male
+  pin headers. A Pimoroni Pico Plus 2 must be mounted on pin headers, because the
+  SP/CE connector on its back prevents it from lying flat. Optional female socket
+  headers, soldered into the PCB, let the board be plugged in and swapped without
+  desoldering.
+* **Controllers** — on v2.8, SNES pads plug in directly; on v2.6, NES pads do,
+  and a SNES pad needs a
+  [SNES-to-NES adapter cable](https://github.com/PicoPlus-devel/pico-snesPlus/blob/main/snestonescontroller.md),
+  one per port. The ports detect the type of pad by themselves; see
+  [Gamepad](#gamepad) for the layouts. A USB gamepad, keyboard or mouse goes on
+  the board's own USB port through an OTG Y-cable (micro-USB on a Pico 2, USB-C
+  on a Pico Plus 2), which also powers the board.
+* **Sound** — over HDMI. The PCB has no place for the optional PCM5100A DAC; its
+  pins are used by controller port 2.
+* **What to flash** — `doom_tiny_adafruitdvisd.uf2` and `doom1-whx.uf2`, as in
+  the [Quick start](#quick-start--flash-a-prebuilt-release). On a Pico Plus 2,
+  `doom_tiny_adafruitdvisd_full.uf2` plays the
+  [full game from SD card](#full-game-from-sd-card-doom_tiny_full).
+
+The parts lists and assembly notes are in the PCB README:
+[PicoNES v2.6](https://github.com/PicoPlus-devel/pico_shared/blob/main/PCB/README.md#picones-v26-nes-controller-ports)
+and
+[PicoNES v2.8](https://github.com/PicoPlus-devel/pico_shared/blob/main/PCB/README.md#picones-v28-snes-controller-ports).
+
+| NES controller ports (v2.6) | SNES controller ports (v2.8) |
+|-----------------------------|------------------------------|
+| <img src="https://raw.githubusercontent.com/PicoPlus-devel/pico_shared/main/PCB/images/picones_v2.6_assembled.jpg" width="400" alt="PicoNES v2.6 with NES controller ports"> | <img src="https://raw.githubusercontent.com/PicoPlus-devel/pico_shared/main/PCB/images/picones_v2.8s_assembled.jpg" width="400" alt="PicoNES v2.8 with SNES controller ports"> |
+
+### 3D printed case
+
+Gavin Knight ([DynaMight1124](https://github.com/DynaMight1124)) designed an
+NES-like case for the v2.6 PCB:
+[thingiverse.com/thing:6689537](https://www.thingiverse.com/thing:6689537). It
+does not fit the v2.8 PCB. Two top covers are available, one with a button that
+presses the BOOTSEL button for firmware updates and one without. All parts are
+shown in the
+[PCB README](https://github.com/PicoPlus-devel/pico_shared/blob/main/PCB/README.md#3d-printed-case).
+For questions about the case, please contact the designer on the Thingiverse
+page.
+
+> [!IMPORTANT]
+> If the board is mounted with male headers, download the **latest** top cover.
+> Headers raise the board, and only the newest cover leaves room for the USB
+> cable — the older ones assume a Pico soldered flat onto the PCB.
+
+| Top cover | Base |
+|-----------|------|
+| <img src="https://github.com/user-attachments/assets/c6205db3-580e-41e9-83e4-66c9534c6519" width="380" alt="Top cover"> | <img src="https://github.com/user-attachments/assets/256bbd1b-b6db-485d-a59c-fd22fd017887" width="380" alt="Base with the PCB fitted"> |
+
 ## Hardware and I/O
 
 Pin assignments live in [fruitjam_cflags.h](fruitjam_cflags.h).
 
 * **Video** — HDMI/DVI output over HSTX on GPIO 13/15/17/19
   (`GPIOHSTXCK`/`D0`/`D1`/`D2`). Rendered at Doom's classic resolution and
-  upscaled by the [pico_shared](https://github.com/fhoedemakers/pico_shared)
+  upscaled by the [pico_shared](https://github.com/PicoPlus-devel/pico_shared)
   `pico_hdmi` driver.
 * **Audio** — soundtrack and effects over I2S to the onboard **TLV320DAC3100**
   codec (speaker and headphone), plus HDMI data-island audio at 48 kHz. The

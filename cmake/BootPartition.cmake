@@ -11,23 +11,26 @@
 # Flash map assumed here:
 #
 #   0x10000000  bootloader                    (512 KB)
-#   0x10080000  emulator app partition        (3 MB reserved for doom_tiny)
-#   0x10400000  doom WHX data (TINY_WAD_ADDR)
-#   0x11000000  end of 16 MB Fruit Jam flash
+#   0x10080000  emulator app partition        (1.5 MB reserved for doom_tiny)
+#   0x10200000  doom WHX data (TINY_WAD_ADDR), ends 0x103B7898
+#   0x10400000  end of a 4 MB Pico 2's flash
 #
-# The 3 MB emulator cap keeps a comfortable margin below the WHX; the
-# current doom_tiny.bin is ~260 KB.
+# doom_tiny uses this map on every board, so one
+# doom1-whx-bootloader.uf2 fits them all; the current doom_tiny.bin is
+# ~380 KB. The doom_tiny_full variants keep no WHX in flash.
 
 if(DEFINED _DOOM_BOOTPARTITION_INCLUDED)
     return()
 endif()
 set(_DOOM_BOOTPARTITION_INCLUDED 1)
 
-# Defaults below are the 16 MB Fruit Jam / 8 MB Feather map (WHX at 0x10400000).
-# The 4 MB Pico 2 boards (adafruitdvisd, murmulatorm2) cap the map to their chip
-# by overriding DOOM_APP_SIZE (1.5 MB) and DOOM_FLASH_TOTAL (4 MB) via -D on the
-# cmake line -- see their *-build-forbootloader.sh. These are CACHE vars, so a
-# command-line -D wins over the set() defaults here; don't change the defaults.
+# Defaults below are the 16 MB Fruit Jam map with a 3 MB app slot, which only
+# the doom_tiny_full variants of the Fruit Jam and Feather still use. Every
+# doom_tiny build passes DOOM_APP_SIZE (1.5 MB), and the 4 MB Pico 2 boards
+# (adafruitdvisd, murmulatorm2, olimexpicopc) DOOM_FLASH_TOTAL (4 MB) too, via
+# -D on the cmake line -- see the *-build-forbootloader.sh scripts. These are
+# CACHE vars, so a command-line -D wins over the set() defaults here; don't
+# change the defaults.
 set(DOOM_XIP_BASE     "0x10000000" CACHE STRING "RP2350 XIP flash base")
 set(DOOM_APP_BASE     "0x10080000" CACHE STRING "Bootloader app-partition base")
 set(DOOM_APP_SIZE     "0x300000"   CACHE STRING "Bytes reserved for doom_tiny (3 MB, up to 0x10380000)")

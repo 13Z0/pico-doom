@@ -676,7 +676,7 @@ if (PICO_SDK)
         )
     endif()
     target_compile_definitions(${DOOM_TINY_TARGET} PRIVATE
-            # Overridden to 0x10080000 by fruitjam_cflags.h (0x10400000 for
+            # Overridden to 0x10080000 by fruitjam_cflags.h (0x10200000 for
             # BUILD_FOR_BOOTLOADER, 0x11000000 = PSRAM for WHD_LOAD_FROM_SD);
             # this default only matters for builds that don't -include that
             # header.
