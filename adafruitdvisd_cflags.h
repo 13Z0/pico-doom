@@ -106,7 +106,7 @@
 // board, so the whole bootloader map is capped to the 4 MB chip:
 //   0x10000000 bootloader (512 KB)
 //   0x10080000 emulator app slot (1.5 MB, DOOM_APP_SIZE=0x180000 in the build)
-//   0x10200000 doom WHX -> ends 0x103B7018 (~296 KB spare below the 4 MB mark)
+//   0x10200000 doom WHX -> ends 0x103B7898 (~296 KB spare below the 4 MB mark)
 // The WHX sits above the app slot so it survives re-flashing doom (or a smaller
 // emulator). Fits a genuine 4 MB Pico 2. The build script passes matching
 // -DDOOM_APP_SIZE / -DDOOM_FLASH_TOTAL / picotool -o; keep all four in sync.

@@ -26,9 +26,8 @@ board_name() {
 # the non-BUILD_FOR_BOOTLOADER branch of TINY_WAD_ADDR in every <tag>_cflags.h,
 # which is the same offset on all five boards.
 #
-# The pico-bootLoader builds use two other offsets that depend on the board's
-# flash size (0x10200000 behind the 1.5 MB app slot on the 4 MB boards,
-# 0x10400000 behind the 3 MB slot on the 8 MB boards). Those are not released
-# from this repository -- the pico-bootLoader repo builds those variants, WHX
-# included.
+# The pico-bootLoader builds use one other offset, 0x10200000 behind their 1.5 MB
+# app slot, the same on all five boards. That WHX is not released from this
+# repository: the pico-bootLoader repo builds those variants, WHX included, and
+# its updateAll converts doom1.whx at that offset itself.
 WHX_ADDR_STANDALONE=0x10080000

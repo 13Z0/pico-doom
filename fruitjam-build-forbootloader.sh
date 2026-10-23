@@ -15,6 +15,7 @@ cmake -S . -B $BUILD \
     -DBOARD=adafruit_fruit_jam -DPICO_BOARD=adafruit_fruit_jam \
     -DUSE_HSTX=1 \
     -DBUILD_FOR_BOOTLOADER=ON \
+    -DDOOM_APP_SIZE=0x180000 \
     ${CMAKE_ARGS} "$@" || exit 1
 
 make -C $BUILD -j$(nproc) || exit 1
@@ -27,7 +28,8 @@ if [ -z "$PICOTOOL" ]; then
     echo "picotool not found (looked at ./picotool/picotool-build/picotool and PATH)" >&2
     exit 1
 fi
-# pico-bootLoader flash map: WHX lives at 0x10400000 (past the 3 MB slot
-# reserved for the doom_tiny image at 0x10080000). Must match TINY_WAD_ADDR
-# in fruitjam_cflags.h (the BUILD_FOR_BOOTLOADER branch).
-"$PICOTOOL" uf2 convert doom1.whx -t bin $BUILD/src/doom1-whx.uf2 -o 0x10400000 --family data
+# pico-bootLoader flash map: WHX lives at 0x10200000 (past the 1.5 MB slot
+# reserved for the doom_tiny image at 0x10080000), as on every board. Must
+# match TINY_WAD_ADDR in fruitjam_cflags.h (the BUILD_FOR_BOOTLOADER branch), and
+# the address the pico-bootLoader's updateAll converts doom1.whx at.
+"$PICOTOOL" uf2 convert doom1.whx -t bin $BUILD/src/doom1-whx-bootloader.uf2 -o 0x10200000 --family data

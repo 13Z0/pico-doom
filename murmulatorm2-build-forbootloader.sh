@@ -2,7 +2,7 @@
 # HW_CONFIG 13 (Murmulator M2) built for the pico-bootLoader.
 # Flash map is capped to the 4 MB Pico 2: bootloader (512 KB) at 0x10000000,
 # a 1.5 MB emulator app slot at 0x10080000 (DOOM_APP_SIZE=0x180000), and the
-# WHX at 0x10200000 (WHX_ADDR below), which ends ~0x103B7018 -- under the 4 MB
+# WHX at 0x10200000 (WHX_ADDR below), which ends 0x103B7898 -- under the 4 MB
 # mark. Fits a genuine 4 MB Pico 2. WHX_ADDR must match the BUILD_FOR_BOOTLOADER
 # TINY_WAD_ADDR in murmulatorm2_cflags.h.
 cd "$(dirname "$0")" || exit 1
@@ -39,4 +39,4 @@ fi
 # pico-bootLoader flash map: WHX lives at 0x10200000 (past the 1.5 MB app slot
 # reserved for the doom_tiny image at 0x10080000). Must match TINY_WAD_ADDR
 # in murmulatorm2_cflags.h (the BUILD_FOR_BOOTLOADER branch) and WHX_ADDR above.
-"$PICOTOOL" uf2 convert doom1.whx -t bin $BUILD/src/doom1-whx.uf2 -o "$WHX_ADDR" --family data
+"$PICOTOOL" uf2 convert doom1.whx -t bin $BUILD/src/doom1-whx-bootloader.uf2 -o "$WHX_ADDR" --family data

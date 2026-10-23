@@ -1,7 +1,7 @@
 #!/bin/sh
 # HW_CONFIG 14 (Adafruit Feather RP2350 + TLV320) built for the pico-bootLoader.
-# The Feather's 8 MB flash fits the bootloader map: WHX at 0x10400000 + 1.8 MB
-# ends well below the 8 MB boundary.
+# Same flash map as every other board: a 1.5 MB app slot at 0x10080000 and the
+# WHX at 0x10200000, ending 0x103B7898.
 cd "$(dirname "$0")" || exit 1
 TAG=featherrp2350
 # USB host runs on PIO: PICO_PIO_USB_PATH is required (matches HAS_USBPIO).
@@ -18,6 +18,7 @@ cmake -S . -B $BUILD \
     -DPICO_BOARD=adafruit_feather_rp2350 \
     -DUSE_HSTX=1 \
     -DBUILD_FOR_BOOTLOADER=ON \
+    -DDOOM_APP_SIZE=0x180000 \
     ${CMAKE_ARGS} "$@" || exit 1
 
 make -C $BUILD -j$(nproc) || exit 1
@@ -30,7 +31,8 @@ if [ -z "$PICOTOOL" ]; then
     echo "picotool not found (looked at ./picotool/picotool-build/picotool and PATH)" >&2
     exit 1
 fi
-# pico-bootLoader flash map: WHX lives at 0x10400000 (past the 3 MB slot
-# reserved for the doom_tiny image at 0x10080000). Must match TINY_WAD_ADDR
-# in featherrp2350_cflags.h (the BUILD_FOR_BOOTLOADER branch).
-"$PICOTOOL" uf2 convert doom1.whx -t bin $BUILD/src/doom1-whx.uf2 -o 0x10400000 --family data
+# pico-bootLoader flash map: WHX lives at 0x10200000 (past the 1.5 MB slot
+# reserved for the doom_tiny image at 0x10080000), as on every board. Must
+# match TINY_WAD_ADDR in featherrp2350_cflags.h (the BUILD_FOR_BOOTLOADER branch), and
+# the address the pico-bootLoader's updateAll converts doom1.whx at.
+"$PICOTOOL" uf2 convert doom1.whx -t bin $BUILD/src/doom1-whx-bootloader.uf2 -o 0x10200000 --family data

@@ -75,15 +75,13 @@ done
     echo "GPIO 8 on the other three). Do **not** flash a \`doom1-whx\` file alongside"
     echo "these builds."
     echo
-    echo "> **Note:** the \`_full\` variants have not been verified on hardware yet."
-    echo
     echo "### Using the pico-bootLoader"
     echo
     echo "Everything you need comes from the"
-    echo "[pico-bootLoader](https://github.com/${GITHUB_REPOSITORY_OWNER:-fhoedemakers}/pico-bootLoader)"
-    echo "release, not from here: the loader firmware, the relinked \`doom_tiny\` app and"
-    echo "its matching WAD data. The files in **this** release are for flashing a board"
-    echo "directly over USB."
+    echo "[pico-bootLoader](https://github.com/${GITHUB_REPOSITORY_OWNER:-PicoPlus-devel}/pico-bootLoader)"
+    echo "release, not from here: the loader firmware and the relinked \`doom_tiny\` app,"
+    echo "and its **updateAll** installs the matching WAD data. The files in **this**"
+    echo "release are for flashing a board directly over USB."
     echo
     echo "### Converting your own WAD (\`whd_gen\`)"
     echo

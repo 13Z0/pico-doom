@@ -103,10 +103,9 @@ done
 # at the same offset, so convert it directly rather than picking one board's
 # build output.
 #
-# Only the standalone offset is released. The pico-bootLoader builds use two
-# further offsets that depend on the board's flash size, and those WHX files are
-# produced by the pico-bootLoader repo alongside the app binaries -- shipping
-# them here as well would only invite flashing the wrong one.
+# Only the standalone offset is released. The pico-bootLoader builds use another
+# offset, and their WHX is produced by the pico-bootLoader repo and its updateAll
+# -- shipping it here as well would only invite flashing the wrong one.
 # ---------------------------------------------------------------------------
 echo ""
 echo "=================== WAD data (doom1.whx) ==================="

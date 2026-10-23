@@ -24,7 +24,7 @@ extern "C" {
 
 // Where the prebuilt firmware, doom1-whx.uf2 and the whd_gen host tool are
 // attached. Quoted on the error pages, so keep it inside the 72-column body.
-#define DOOM_RELEASES_URL "https://github.com/fhoedemakers/pico-doom/releases"
+#define DOOM_RELEASES_URL "https://github.com/PicoPlus-devel/pico-doom/releases"
 
 // Show a full-screen DOS-style error page and never return.
 //
