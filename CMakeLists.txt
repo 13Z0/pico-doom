@@ -58,19 +58,15 @@ if (PICO_SDK_PATH)
     # submodule, 0.12.0) was here for. Make sure the SDK's own submodules are
     # checked out -- pico-env.sh verifies this.
     #
-    # Version: tinyusb newer than the 0.20.0 tag -- a post-release master
-    # requirement, not a release you can name. A stock SDK 2.2.0 pins 0.18.0, so
-    # bump the submodule in place (see README; these builds use 7f146c9ff,
-    # 0.20.0-843). What sets that floor is 3rdparty/tusb_xinput, not our own USB
-    # init: usbh_class_driver_t.open returns uint16_t (bytes of descriptor
-    # consumed) since commit ef018e364 (0.20.0-103) but bool before it, including
-    # at the 0.20.0 tag itself, and xinput_host.c is written to the newer shape --
-    # so anything older gives -Wincompatible-pointer-types on the driver table and
-    # claims interfaces by a different rule. d_main.c's tusb_init(rhport, rh_init)
-    # is fine either way: 0.18.0 already has that API, and what post-0.20.0 master
-    # adds is only the deprecation attribute on the old tuh_init(rhport) spelling
-    # (usbh.h gates it on TUSB_VERSION_NUMBER > 2000, and master bumped
-    # TUSB_VERSION_REVISION to 1).
+    # Version: the tinyusb that pico-sdk 2.2.0 pins (0.18.0), not tinyusb master.
+    # Master of 2026 rewrote the driver for the RP2350's native USB port
+    # (hcd_rp2040.c); with it, devices behind a hub were often lost and it could
+    # panic ("buf_ctrl ... already available", "Data Seq Error"), which hits the
+    # native-USB boards (Pico 2, Murmulator M2, Olimex). 3rdparty/tusb_xinput builds
+    # with either version: usbh_class_driver_t.open returns bool before tinyusb
+    # commit ef018e364 and the length of the descriptors it takes after it, and
+    # xinput_host.c picks the matching function (_Generic). d_main.c's
+    # tusb_init(rhport, rh_init) exists in 0.18.0 as well.
     # this only affects device builds device, but we want to use zone for malloc in this case so we don't have two separate elastic spaces and can fit more in
     set(SKIP_PICO_MALLOC 1)
     pico_sdk_init()

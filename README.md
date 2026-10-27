@@ -119,24 +119,20 @@ the build host is for compiling from source.
   pass `-DENABLE_PIO_USB=0`. Every build script validates these paths up front via
   [pico-env.sh](pico-env.sh) and stops with a clear message if one is wrong.
 
-* **tinyusb newer than the 0.20.0 tag**, inside that SDK. SDK 2.2.0 pins
-  **0.18.0**, and the `0.20.0` tag is *also* too old — this is a post-release
-  master requirement, not a version number you can ask for. The vendored XInput
-  host driver needs `usbh_class_driver_t.open` to return `uint16_t` (bytes of
-  descriptor consumed) rather than `bool`, which landed in tinyusb commit
-  `ef018e364` (2025-12-11, `0.20.0-103`). Anything older warns
-  `-Wincompatible-pointer-types` in `3rdparty/tusb_xinput/xinput_host.c` and
-  claims interfaces by a different rule. These builds use `7f146c9ff`
-  (`0.20.0-843`). Check and bump it in place:
+* **The tinyusb that SDK 2.2.0 includes (0.18.0)**, not tinyusb's master branch.
+  Master of 2026 rewrote the driver for the RP2350's native USB port; with it, USB
+  devices behind a hub on the native-USB builds (Pico 2, Murmulator M2, Olimex
+  RP2040-PICO-PC) were often not detected, and the firmware could stop with a panic
+  (`buf_ctrl … already available`, `Data Seq Error`). The XInput host driver
+  (`3rdparty/tusb_xinput`) builds with either version: tinyusb changed
+  `usbh_class_driver_t.open` from `bool` to the length of the descriptors it takes
+  in commit `ef018e364`, and the driver picks the matching function. If
+  `lib/tinyusb` was moved to master before, reset it to the SDK's version:
 
   ```bash
-  git -C $PICO_SDK_PATH/lib/tinyusb describe --tags     # want 0.20.0-103 or later
-  git -C $PICO_SDK_PATH/lib/tinyusb fetch origin
-  git -C $PICO_SDK_PATH/lib/tinyusb checkout 7f146c9ff  # known good
+  git -C $PICO_SDK_PATH/lib/tinyusb describe --tags     # 0.18.0
+  git -C $PICO_SDK_PATH submodule update --init lib/tinyusb
   ```
-
-  Note that re-running `git -C $PICO_SDK_PATH submodule update --init` afterwards
-  resets `lib/tinyusb` to the SDK's pinned 0.18.0 and undoes this.
 
 ## Building from source (standalone)
 
