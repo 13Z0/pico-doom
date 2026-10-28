@@ -90,6 +90,7 @@
 #include "hardware/gpio.h"
 #ifdef HAS_USBPIO
 #include "pio_usb_configuration.h"
+#include "doom_usb_frame.h"
 #endif
 #include "tusb.h"
 #endif
@@ -563,6 +564,7 @@ void D_DoomLoop (void)
   pio_cfg.pinout = PIN_USB_HOST_DP + 1 == PIN_USB_HOST_DM ? PIO_USB_PINOUT_DPDM : PIO_USB_PINOUT_DMDP;
   pio_cfg.pin_dp = PIN_USB_HOST_DP;
   pio_cfg.tx_ch = 9;
+  pio_cfg.skip_alarm_pool = true; // doom_usb_frame.c runs the 1 ms frame (RP2350-E9 workaround)
 
   tuh_configure(CFG_TUH_RPI_PIO_USB, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
   printf("Init USB...\n");
@@ -577,6 +579,7 @@ void D_DoomLoop (void)
       .speed = TUSB_SPEED_AUTO,
   };
   tusb_init(CFG_TUH_RPI_PIO_USB, &host_init);
+  doom_usb_frame_start();
 #else
   // Native USB controller as host (adafruitdvisd, murmulatorm2). rhport 0 is
   // the only native root port — hcd_rp2040.c asserts rhport == 0.
