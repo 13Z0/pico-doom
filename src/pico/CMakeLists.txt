@@ -19,6 +19,7 @@ if (PICO_ON_DEVICE)
             ${CMAKE_CURRENT_LIST_DIR}/doom_leds.c
             ${CMAKE_CURRENT_LIST_DIR}/doom_sdcard.c
             ${CMAKE_CURRENT_LIST_DIR}/doom_settings.c
+            ${CMAKE_CURRENT_LIST_DIR}/doom_usb_frame.c
             ${CMAKE_CURRENT_LIST_DIR}/doom_wiipad.cpp
             ${CMAKE_CURRENT_LIST_DIR}/i_usbhid.cpp
             )
