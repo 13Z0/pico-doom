@@ -23,6 +23,12 @@ so keep the heading text exactly the tag name.
 
 Nothing changes for boards flashed directly over USB.
 
+### Fixed
+
+- **USB on the Adafruit Fruit Jam and Feather RP2350:** USB controllers,
+  keyboards and mice are now found at every start. On boards with an older
+  RP2350 chip they were often not detected.
+
 ## v0.3
 
 ### Added
