@@ -516,10 +516,6 @@ Notes:
   every board.
 * **Olimex RP2040-PICO-PC** — the board's PS/2 port (GPIO 0/1) is not supported,
   and the serial console is disabled so that those pins stay free.
-* **Video jitter trade-off** — on the native-USB boards `clk_hstx` is derived
-  from PLL_SYS (PLL_USB must stay at 48 MHz for the USB controller), so very
-  strict HDMI sinks may show occasional sparkles; the PIO-USB boards keep the
-  dedicated 126 MHz PLL_USB HSTX clock.
 
 ## PicoNES PCB
 
@@ -615,7 +611,7 @@ Pin assignments live in [fruitjam_cflags.h](fruitjam_cflags.h).
   STEMMA QT connector (GPIO 20/21, shared with the codec's I2C bus) — that one
   *is* hot-pluggable, see [Wii pads](#wii-pads).
 * **Debug** — UART on GPIO 44 (TX) / 45 (RX), 115200 baud.
-* **Clocking** — the RP2350 is overclocked to **378 MHz at 1.60 V**. The
+* **Clocking** — the RP2350 is overclocked to **384 MHz at 1.50 V**. The
   extra CPU headroom fixes the in-game audio slowdown.
 
 Hold a button at power-on to disable audio:

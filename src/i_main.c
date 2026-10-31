@@ -306,6 +306,26 @@ bi_decl(bi_2pins_with_names(PWM_AUDIO_PIN_L, "PWM audio L", PWM_AUDIO_PIN_R, "PW
 
 
 int NO_MUSIC, NO_SFX;
+#if PICO_ON_DEVICE
+// DOOM_CPU_KHZ picks the source of clk_hstx (126 MHz: the 25.2 MHz pixel
+// clock), by the same rule as pico_shared's setClocksAndStartStdio():
+// - a multiple of 48 MHz, such as 384000 (the default): USB and ADC are
+//   divided from PLL_SYS, which leaves PLL_USB free to be a dedicated
+//   126 MHz clk_hstx source;
+// - 126000, 252000 or 504000: clk_hstx is clk_sys / 1, 2 or 4, and PLL_USB
+//   keeps its 48 MHz for USB.
+// Any other clock is refused. 378 MHz (clk_sys / 3) gives the TMDS bits an
+// uneven duty cycle, because clk_hstx has no duty-cycle correction for odd
+// divisors: some displays show that as dots.
+#ifndef DOOM_CPU_KHZ
+#define DOOM_CPU_KHZ 384000
+#endif
+#define DOOM_USB_ON_PLL_SYS (DOOM_CPU_KHZ % 48000 == 0 && DOOM_CPU_KHZ / 48000 <= 16)
+#if !DOOM_USB_ON_PLL_SYS && DOOM_CPU_KHZ != 126000 && DOOM_CPU_KHZ != 252000 && DOOM_CPU_KHZ != 504000
+#error DOOM_CPU_KHZ must be a multiple of 48000 (at most 768000), or 126000, 252000 or 504000
+#endif
+#endif
+
 int main(int argc, char **argv)
 {
 #if defined(ADAFRUIT_FRUIT_JAM)
@@ -328,30 +348,39 @@ int main(int argc, char **argv)
 #endif
 #endif
 #if 1
-    // 378 MHz @ 1.50 V — the proven pico-infonesPlus overclock for this
-    // board. Sequence ported from pico_shared's FrensHelpers.cpp
-    // setClocksAndStartStdio() (378 MHz / PIO-USB path); keep it in step
-    // with that helper.
+    // 384 MHz @ 1.50 V. Sequence ported from pico_shared's FrensHelpers.cpp
+    // setClocksAndStartStdio(); keep it in step with that helper.
     vreg_disable_voltage_limit();
     vreg_set_voltage(VREG_VOLTAGE_1_50);
-    // Relax XIP timing BEFORE raising clk_sys: 4x flash divisor (378/4 =
-    // 94.5 MHz) plus rxdelay/cooldown margins. Whole-register value is the
-    // hardware-proven profile from FrensHelpers.cpp — without it, XIP
-    // fetches fault at this frequency.
-    qmi_hw->m[0].timing = 0x60007304;
+    // Relax XIP timing BEFORE raising clk_sys: flash at most 96 MHz
+    // (384 / 4), with the read sample delay scaled to stay at about the same
+    // time in ns. Same formula as FrensHelpers.cpp: 0x60007304 at 384 MHz.
+    // Without it, XIP fetches fault at this frequency.
+    {
+        const uint32_t flash_div = (DOOM_CPU_KHZ + 95999) / 96000 < 4 ? 4 : (DOOM_CPU_KHZ + 95999) / 96000;
+        const uint32_t rxdelay = (3 * DOOM_CPU_KHZ + 189000) / 378000;
+        qmi_hw->m[0].timing = 0x60000000u | (14u << 11) | ((rxdelay > 7 ? 7 : rxdelay) << 8) | flash_div;
+    }
     sleep_ms(100);
-    // (378 is not a multiple of 12 MHz; Pico-PIO-USB runs on a fractional
-    // divider here — confirmed working in pico-infonesPlus on this board.)
-    set_sys_clock_khz(378000, true);
+    // (384 is a multiple of 12 MHz, so Pico-PIO-USB runs on integer dividers.)
+    set_sys_clock_khz(DOOM_CPU_KHZ, true);
     sleep_ms(100);
-#ifdef HAS_USBPIO
-    // clk_hstx: deliberately NOT derived from clk_sys even though
-    // 378/3 = 126 is an integer division — at 378 MHz PLL_SYS jitter
-    // propagates into the TMDS bit clock and strict HDMI sinks show
-    // dots/sparkles (eye-pattern closure; see FrensHelpers.cpp). Instead
-    // retask PLL_USB as a dedicated, fixed 126 MHz HSTX source. Safe on
-    // PIO-USB builds only — the USB controller (which needs PLL_USB at
-    // 48 MHz) is unused when the host port runs on Pico-PIO-USB.
+#if DOOM_USB_ON_PLL_SYS
+    // Move USB and ADC to PLL_SYS (an exact integer divider) before PLL_USB
+    // is retuned, so neither ever sees it change: the native USB host
+    // (adafruitdvisd, murmulatorm2, olimexpicopc) keeps its 48 MHz. PLL_USB
+    // then becomes a dedicated 126 MHz HSTX source with no divider at all,
+    // which keeps the TMDS bits clean on strict HDMI sinks.
+    clock_configure(clk_usb,
+                    0,
+                    CLOCKS_CLK_USB_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+                    DOOM_CPU_KHZ * 1000u,
+                    USB_CLK_HZ);
+    clock_configure(clk_adc,
+                    0,
+                    CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+                    DOOM_CPU_KHZ * 1000u,
+                    USB_CLK_HZ);
     pll_deinit(pll_usb);
     pll_init(pll_usb, 1, 756000000, 6, 1); // 756 / (6*1) = 126 MHz
     clock_configure(clk_hstx,
@@ -360,32 +389,23 @@ int main(int argc, char **argv)
                     126000000u,
                     126000000u);
 #else
-    // Native-USB boards (adafruitdvisd, murmulatorm2): the USB controller
-    // needs PLL_USB at its stock 48 MHz, so PLL_USB cannot be retasked as
-    // the HSTX source. Derive clk_hstx from clk_sys instead — 378/3 = 126
-    // exactly, which keeps the 25.2 MHz pixel clock and satisfies the
-    // 126 MHz assert in pico_hdmi_glue.c. This mirrors the proven
-    // native-USB path in pico_shared's FrensHelpers.cpp
-    // setClocksAndStartStdio() verbatim (CLK_SYS aux tap; do NOT switch to
-    // the CLKSRC_PLL_SYS tap — the ecosystem has only ever shipped the
-    // CLK_SYS form on these boards). Trade-off: PLL_SYS jitter rides on the
-    // TMDS bit clock (possible sparkles on strict HDMI sinks); unavoidable
-    // here since PLL_USB is spoken for.
+    // clk_sys / 1, 2 or 4 (126, 252 or 504 MHz): no divider or an even one,
+    // so the TMDS bits keep an even duty cycle. PLL_USB keeps its 48 MHz.
     clock_configure(clk_hstx,
                     0,
                     CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS,
-                    378000000u,
+                    DOOM_CPU_KHZ * 1000u,
                     126000000u);
 #endif
-    // set_sys_clock_khz parked clk_peri on PLL_USB@48 MHz (which the PIO-USB
-    // build just retasked to 126) — put clk_peri on PLL_SYS at full speed on
-    // both variants (helper-proven order; stdio_init_all below derives UART
+    // set_sys_clock_khz parked clk_peri on PLL_USB@48 MHz (which the path
+    // above may just have retuned to 126) — put clk_peri on PLL_SYS at full
+    // speed (helper-proven order; stdio_init_all below derives UART
     // dividers from whatever clk_peri reads then).
     clock_configure(clk_peri,
                     0,
                     CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-                    378000000u,
-                    378000000u);
+                    DOOM_CPU_KHZ * 1000u,
+                    DOOM_CPU_KHZ * 1000u);
 #endif
 #if !USE_PICO_NET
     // debug ?

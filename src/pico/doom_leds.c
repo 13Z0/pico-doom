@@ -120,7 +120,7 @@ void doom_vu_add_chunk(const int16_t *stereo, unsigned frames)
     if (!frames) return;
 
     // Left channel only, like upstream. 256 frames costs about 3.4 us at
-    // 378 MHz, once per 5.3 ms of audio.
+    // 384 MHz, once per 5.3 ms of audio.
     uint32_t sum = 0;
     for (unsigned i = 0; i < frames; i++) {
         int v = stereo[i * 2];

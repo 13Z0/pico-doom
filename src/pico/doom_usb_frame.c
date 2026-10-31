@@ -25,7 +25,7 @@
 //	input enabled keeps a line that was high at about 2.2 V, and the
 //	pull-down cannot bring it back. Pico-PIO-USB switches the inputs off for
 //	8 NOPs before it reads the line state, too short to drain a line (21 ns
-//	at 378 MHz), and reads right after switching them back on. A USB device
+//	at 384 MHz), and reads right after switching them back on. A USB device
 //	then often stayed unseen: D- was latched, so D+ and D- both read high
 //	(SE1), never an idle state. So while nothing is attached, the inputs stay
 //	off between frames (the lines drain through the pull-downs) and the line

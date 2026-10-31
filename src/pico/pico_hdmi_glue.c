@@ -43,11 +43,10 @@ void doom_hdmi_init(video_output_scanline_cb_t scanline_cb,
 {
     // pico_hdmi is built with NOHSTXCLOCK, so its video_output_init() doesn't
     // touch clk_hstx — and neither do we anymore. clk_hstx is configured once
-    // in i_main.c: a fixed 126 MHz from a retasked PLL_USB, deliberately
-    // DECOUPLED from PLL_SYS (at 378 MHz, PLL_SYS jitter on the TMDS bit
-    // clock shows as dots/sparkles on strict HDMI sinks — see the FrensHelpers
-    // port in i_main.c). Reconfiguring from clk_sys here would put that
-    // jitter back on the link. The 25.2 MHz pixel clock (CSR_CLKDIV=5) and
+    // in i_main.c: at 384 MHz a fixed 126 MHz from a retasked PLL_USB, with
+    // no divider (see the FrensHelpers port in i_main.c). Reconfiguring it
+    // from clk_sys here would bring back the odd divider (378 / 3) whose
+    // uneven duty cycle shows as dots on strict HDMI sinks. The 25.2 MHz pixel clock (CSR_CLKDIV=5) and
     // pico_hdmi's DI_LINE_RATE_HZ / ACR N=6144/CTS=25200 assumptions are
     // unchanged.
     assert(clock_get_hz(clk_hstx) == 126000000u);

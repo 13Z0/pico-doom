@@ -4,6 +4,23 @@ Add a section per release, headed with the tag. `release-notes.sh` extracts the
 section matching the tag being released and puts it in the GitHub release body,
 so keep the heading text exactly the tag name.
 
+## v0.5
+
+### Changed
+
+- The RP2350 now runs at 384 MHz instead of 378 MHz.
+
+### Fixed
+
+- **No more dots or lines in the picture** on a Pico 2 with the Adafruit DVI
+  Breakout, the Murmulator M2 and the Olimex RP2040-PICO-PC. Some TVs and
+  monitors showed small dots or short dotted lines. The picture is now clean,
+  and USB controllers, keyboards and mice keep working. Thanks to @szuping for
+  the hint that led to this fix.
+- **USB on the Adafruit Fruit Jam and Feather RP2350:** USB controllers,
+  keyboards and mice are now found at every start. On boards with an older
+  RP2350 chip they were often not detected.
+
 ## v0.4
 
 ### Added
@@ -22,12 +39,6 @@ so keep the heading text exactly the tag name.
   PicoPlus-devel organisation on GitHub.
 
 Nothing changes for boards flashed directly over USB.
-
-### Fixed
-
-- **USB on the Adafruit Fruit Jam and Feather RP2350:** USB controllers,
-  keyboards and mice are now found at every start. On boards with an older
-  RP2350 chip they were often not detected.
 
 ## v0.3
 

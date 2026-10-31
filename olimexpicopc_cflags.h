@@ -77,7 +77,7 @@
 // hstx_packet.c's channel_status_bit[] table. Strict HDMI monitors require
 // the IEC 60958 channel status sample-rate field to agree with the actual
 // stream rate, so both must be 48 kHz. It is also an exact PWM rate:
-// 378 MHz / 48 kHz = 7875 clk_sys cycles per sample.
+// 384 MHz / 48 kHz = 8000 clk_sys cycles per sample.
 #undef PICO_SOUND_SAMPLE_FREQ
 #define PICO_SOUND_SAMPLE_FREQ 48000
 // HSTX lanes for the Olimex RP2040-PICO-PC (BoardConfigs HW_CONFIG 15;
