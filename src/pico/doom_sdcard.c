@@ -35,6 +35,7 @@
 #include "ff.h"
 
 #include "doom_sdcard.h"
+#include "pico_bootcfg.h"
 
 #if !defined(SDCARD_SPI) || !defined(SDCARD_PIO)
 #error the board cflags header must define SDCARD_SPI and SDCARD_PIO
@@ -348,6 +349,14 @@ int32_t doom_sd_file_size(const char *path)
     FSIZE_t size = f_size(&sd_fil);
     f_close(&sd_fil);
     return (int32_t)size;
+}
+
+// The display mode to start in (pico_bootcfg.c): DISPLAY= from /boot.txt when
+// pico-bootLoader started us, read through this file's FIL, else `stored`.
+bool doom_sd_boot_dvi(int stored)
+{
+    FIL *fil = (pico_bootcfg_from_loader() && doom_sd_ready()) ? &sd_fil : NULL;
+    return pico_bootcfg_boot_dvi(stored, fil);
 }
 
 #endif // PICO_ON_DEVICE

@@ -39,10 +39,19 @@ void doom_settings_load(void);
 // thread, not from an interrupt.
 void doom_settings_flush(void);
 
+// The stored display mode (pico_bootcfg.h PICO_DISPLAY_*: 0 board default,
+// 1 HDMI, 2 DVI). Before doom_settings_load it reads the byte from the card.
+int doom_settings_display_pref(void);
+
+// Sets it; the next doom_settings_flush writes it.
+void doom_settings_set_display_pref(int pref);
+
 #else
 
 #define doom_settings_load() ((void)0)
 #define doom_settings_flush() ((void)0)
+#define doom_settings_display_pref() 0
+#define doom_settings_set_display_pref(pref) ((void)(pref))
 
 #endif
 

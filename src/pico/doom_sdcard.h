@@ -74,6 +74,11 @@ int32_t doom_sd_file_size(const char *path);
 // Human-readable FatFs FRESULT, for logs and on-screen messages.
 const char *doom_sd_strerror(int fresult);
 
+// The display mode to start in, true for DVI: the bootloader's DISPLAY= from
+// /boot.txt when it started us, else `stored` (pico_bootcfg.h PICO_DISPLAY_*),
+// else the board default.
+bool doom_sd_boot_dvi(int stored);
+
 #ifdef __cplusplus
 }
 #endif

@@ -10,6 +10,7 @@
  */
 
 #include "pico_hdmi_glue.h"
+#include "doom_boot.h"       // doom_display_boot_dvi
 
 #include "pico/multicore.h"
 #include "pico/stdlib.h"
@@ -30,6 +31,12 @@
 // per-sample fanout in i_picosound.c read this. Default = HDMI so audio comes
 // out of the TV until the user plugs headphones in.
 volatile doom_audio_sink_t doom_audio_sink = DOOM_SINK_HDMI;
+volatile bool doom_audio_dvi = false;
+
+// Headphones plugged in (TLV320 jack detect), and the sink and speaker still to
+// be set for a change of that or of the display mode. Core0 only.
+static bool hp_in;
+static bool route_dirty = true;
 
 // core1 owns HSTX servicing; give it a dedicated stack rather than sharing
 // pico-sdk's default core1 stack region (which is fixed at 4 KB, same as the
@@ -51,8 +58,12 @@ void doom_hdmi_init(video_output_scanline_cb_t scanline_cb,
     // unchanged.
     assert(clock_get_hz(clk_hstx) == 126000000u);
 
-    // HDMI mode (not DVI-only) so data-island audio packets are emitted.
-    video_output_set_dvi_mode(false);
+    // HDMI or DVI (doom_boot.c): the port's setting, or the bootloader's when
+    // it started us. HDMI emits data-island audio packets; the queue is set up
+    // in DVI mode as well, for a later switch.
+    doom_audio_dvi = doom_display_boot_dvi();
+    video_output_set_dvi_mode(doom_audio_dvi);
+    route_dirty = true;
     hstx_di_queue_init();
     if (vsync_cb) {
         video_output_set_vsync_callback(vsync_cb);
@@ -68,8 +79,18 @@ void doom_hdmi_init(video_output_scanline_cb_t scanline_cb,
     multicore_launch_core1_with_stack(video_output_core1_run,
                                       doom_hdmi_core1_stack,
                                       sizeof(doom_hdmi_core1_stack));
-    printf("Doom HSTX video + HDMI audio initialised (clk_hstx=%lu Hz).\n",
-           (unsigned long)clock_get_hz(clk_hstx));
+    printf("Doom HSTX video initialised, %s mode (clk_hstx=%lu Hz).\n",
+           doom_audio_dvi ? "DVI" : "HDMI", (unsigned long)clock_get_hz(clk_hstx));
+}
+
+void doom_hdmi_set_dvi(bool dvi)
+{
+    // The HSTX DMA interrupt reads the mode on every scanline, so this is safe
+    // at any time.
+    video_output_set_dvi_mode(dvi);
+    doom_audio_dvi = dvi;
+    route_dirty = true;
+    printf("Doom display: %s\n", dvi ? "DVI" : "HDMI");
 }
 
 // Verbatim from pico_shared/pico_hdmi/hstx.c:272-296. Accumulates 4 samples
@@ -113,14 +134,24 @@ void __not_in_flash_func(hstx_push_audio_sample)(int left, int right)
 void doom_poll_headphone(void)
 {
     enum headphone_toggle_t ev = tlv320_poll_headphone();
-    if (ev == HP_TOGGLE_CONNECT) {
-        doom_audio_sink = DOOM_SINK_HEADPHONES;
-        // Speaker is already muted by tlv320_poll_headphone's default handling.
-    } else if (ev == HP_TOGGLE_DISCONNECT) {
-        doom_audio_sink = DOOM_SINK_HDMI;
-        // TLV320's default is to unmute the speaker on HP removal. Override:
-        // per project spec, when headphones are unplugged audio routes to HDMI
-        // only — the internal speaker must never play.
-        audio_i2s_muteInternalSpeaker(true);
+    if (ev == HP_TOGGLE_CONNECT || ev == HP_TOGGLE_DISCONNECT) {
+        hp_in = (ev == HP_TOGGLE_CONNECT);
+        route_dirty = true;
     }
+    if (!route_dirty) {
+        return;
+    }
+    route_dirty = false;
+
+    const bool dvi = doom_audio_dvi;
+    // DVI mode carries no audio: I2S (or PWM) always. Only the exclusive-sink
+    // boards (i_picosound.c) look at the sink otherwise; on the others it just
+    // keeps the HDMI-ring gate out of the way in DVI mode.
+    doom_audio_sink = (dvi || hp_in) ? DOOM_SINK_HEADPHONES : DOOM_SINK_HDMI;
+#if DOOM_AUDIO_EXCLUSIVE_SINK
+    // HDMI mode: per project spec the internal speaker never plays (the TLV320
+    // unmutes it on headphone removal, so this overrides that). DVI mode: it
+    // plays unless headphones are plugged in (the codec mutes it for them).
+    audio_i2s_muteInternalSpeaker(!dvi || hp_in);
+#endif
 }

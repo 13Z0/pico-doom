@@ -31,6 +31,12 @@
 // Both stub themselves out off-device, so doom_reboot_to_bootsel() can call
 // them without another #if -- the same arrangement I_Quit() uses.
 #include "doom_settings.h"
+#include "doom_sdcard.h"
+#if PICO_ON_DEVICE
+#include "pico_bootcfg.h"
+#include "pico_hdmi_glue.h"
+#include "video_output.h"
+#endif
 #include "doom_leds.h"
 
 // pico_emuLoader bootloader handshake. Two watchdog scratch registers carry
@@ -132,5 +138,40 @@ void __attribute__((noreturn)) doom_restart_game(void)
     }
 #else
     exit(0);
+#endif
+}
+
+// The display mode (HDMI or DVI) of the HDMI connector.
+//
+// At start: the bootloader's DISPLAY= setting from /boot.txt when it started
+// us, else the stored setting (the Options menu's "Display", in
+// /settings_DOOM.dat), else the board default (DVI on the Murmulator M2, HDMI
+// elsewhere; see pico_bootcfg.h).
+bool doom_display_boot_dvi(void)
+{
+#if PICO_ON_DEVICE
+    return doom_sd_boot_dvi(doom_settings_display_pref());
+#else
+    return false;
+#endif
+}
+
+bool doom_display_is_dvi(void)
+{
+#if PICO_ON_DEVICE
+    return video_output_get_dvi_mode();
+#else
+    return false;
+#endif
+}
+
+// The Options menu's "Display" item: switches the running picture and the
+// sound with it, and stores the choice (M_ChangeDisplay writes it at once).
+void doom_display_toggle(void)
+{
+#if PICO_ON_DEVICE
+    bool dvi = !video_output_get_dvi_mode();
+    doom_hdmi_set_dvi(dvi);
+    doom_settings_set_display_pref(dvi ? PICO_DISPLAY_DVI : PICO_DISPLAY_HDMI);
 #endif
 }

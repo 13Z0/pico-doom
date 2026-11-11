@@ -53,28 +53,15 @@
 #define HSTX_AUDIO_DI_HIGH_WATERMARK 200
 #endif
 
-// Which audio_i2s driver this board carries — set in the board's force-included
-// <tag>_cflags.h as a numeric literal (1 = TLV320, 2 = PCM5000A, values from
-// audio_i2s.h). Defaults to the TLV320 (Fruit Jam) when a header predates the
-// multi-board split.
-#ifndef DOOM_AUDIO_I2S_DRIVER
-#define DOOM_AUDIO_I2S_DRIVER PICO_AUDIO_I2S_DRIVER_TLV320
-#endif
+// DOOM_AUDIO_I2S_DRIVER, DOOM_AUDIO_HAS_I2S and DOOM_AUDIO_EXCLUSIVE_SINK (what
+// audio hardware the board has) are in pico_hdmi_glue.h, which owns the sink
+// routing.
 
-// Boards without an I2S DAC (driver 0 = PICO_AUDIO_I2S_DRIVER_NONE, e.g. the
-// Olimex RP2040-PICO-PC) play over HDMI and, where the board has one, the PWM
-// audio jack. The I2S ring is then never allocated, so nothing may enqueue to
-// it or pace the mixer by it; the HDMI data-island ring does the pacing alone.
-#define DOOM_AUDIO_HAS_I2S (DOOM_AUDIO_I2S_DRIVER != PICO_AUDIO_I2S_DRIVER_NONE)
-
-// Headphone-detect is only available on the TLV320 with its INT pin wired
-// (Fruit Jam). Boards without it (PCM5100A boards, Feather's TLV320 breakout)
-// can't switch sinks at runtime, so they drive HDMI and I2S simultaneously.
-#if DOOM_AUDIO_I2S_DRIVER == PICO_AUDIO_I2S_DRIVER_TLV320 && PICO_AUDIO_I2S_INTERRUPT_PIN != -1
-#define DOOM_AUDIO_EXCLUSIVE_SINK 1
-#else
-#define DOOM_AUDIO_EXCLUSIVE_SINK 0
-#endif
+// DVI display mode on a board without I2S: the PWM jack alone plays, so it
+// paces the mixer. Mix while it holds less than half its 2048-frame ring, where
+// it starts playing; with one MIX_CHUNK_SAMPLES burst on top it stays below the
+// 3/4 at which pwm_audio drops samples.
+#define PWM_TARGET_FILL 1024
 
 #define ADPCM_BLOCK_SIZE 128
 #define ADPCM_SAMPLES_PER_BLOCK_SIZE 249
@@ -419,12 +406,25 @@ static void I_Pico_UpdateSound(void)
     // packets, which sounds like static on the HDMI sink. Skip this mix
     // cycle when the DI ring can't absorb another full burst; the next call
     // (microseconds later) retries after some drain.
-    if (doom_audio_sink == DOOM_SINK_HDMI) {
+    // In DVI display mode nothing goes to HDMI and the HSTX driver does not
+    // drain the ring, so it must not gate anything then.
+    if (doom_audio_sink == DOOM_SINK_HDMI && !doom_audio_dvi) {
         const uint32_t di_burst_packets = MIX_CHUNK_SAMPLES / 4;
         if (hstx_di_queue_get_level() + di_burst_packets > HSTX_AUDIO_DI_HIGH_WATERMARK) {
             return;
         }
     }
+#if !DOOM_AUDIO_HAS_I2S
+    if (doom_audio_dvi) {
+#if PWM_AUDIO_IS_ENABLED
+        if (pwm_audio_get_fill() >= PWM_TARGET_FILL) {
+            return;
+        }
+#else
+        return;   // DVI and neither I2S nor a PWM jack: no output at all
+#endif
+    }
+#endif
 
     audio_buffer_t *buffer = &mix_audio_buffer;
     if (music_generator) {
@@ -536,23 +536,30 @@ static void I_Pico_UpdateSound(void)
         }
     }
 #elif DOOM_AUDIO_HAS_I2S
-    // No headphone detect on this board: feed real samples to both sinks.
-    // doom_audio_sink stays at its DOOM_SINK_HDMI default, so the DI-ring
+    // No headphone detect on this board: feed real samples to both sinks in
+    // HDMI mode. doom_audio_sink stays at DOOM_SINK_HDMI there, so the DI-ring
     // back-pressure gate above still applies, and the I2S ring keeps its
-    // role as the mixer's pacing clock.
+    // role as the mixer's pacing clock. DVI mode: I2S only.
+    const bool dvi = doom_audio_dvi;
     for (uint32_t s = 0; s < n; s++) {
         int16_t l = *sp++;
         int16_t r = *sp++;
-        hstx_push_audio_sample((int)l, (int)r);
+        if (!dvi)
+            hstx_push_audio_sample((int)l, (int)r);
         audio_i2s_enqueue_sample(((uint32_t)(uint16_t)l << 16) | (uint16_t)r);
     }
 #else
-    // No I2S DAC: HDMI only, paced by the DI-ring gate above. A PWM audio jack,
+    // No I2S DAC: HDMI, paced by the DI-ring gate above. A PWM audio jack,
     // if the board has one, takes its copy inside hstx_push_audio_sample().
+    // DVI mode: the PWM jack alone, paced by its own fill (gate above).
+    const bool dvi = doom_audio_dvi;
     for (uint32_t s = 0; s < n; s++) {
         int16_t l = *sp++;
         int16_t r = *sp++;
-        hstx_push_audio_sample((int)l, (int)r);
+        if (!dvi)
+            hstx_push_audio_sample((int)l, (int)r);
+        else
+            pwm_audio_push((int)l, (int)r);
     }
 #endif
 }
@@ -583,11 +590,12 @@ static boolean I_Pico_InitSound(boolean _use_sfx_prefix)
         panic("PicoAudio: I2S setup failed (driver %d).\n", DOOM_AUDIO_I2S_DRIVER);
     }
 
-    // Speaker stays muted forever on Fruit Jam per project spec: with
-    // headphones out, HDMI is the sink; with headphones in, the DAC's
+    // In HDMI mode the speaker stays muted on Fruit Jam per project spec:
+    // with headphones out, HDMI is the sink; with headphones in, the DAC's
     // headphone jack is the sink. The tlv320 driver defaults to speaker
     // *unmuted* on cold boot, and toggles it on jack events. Force muted
-    // now so first-frame audio doesn't blast the internal speaker.
+    // now so first-frame audio doesn't blast the internal speaker. In DVI
+    // mode the first doom_poll_headphone() unmutes it (pico_hdmi_glue.c).
     audio_i2s_muteInternalSpeaker(true);
 
     // Boost DAC digital gain. tlv320_program_registers ships +5 dB (0x0A);

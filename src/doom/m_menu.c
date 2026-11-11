@@ -231,6 +231,7 @@ static void M_QuitDOOM(int choice);
 static void M_ChangeMessages(int choice);
 #if PICO_ON_DEVICE
 static void M_ChangeNesPad(int choice);
+static void M_ChangeDisplay(int choice);
 static void M_Bootsel(int choice);
 #endif
 static void M_ChangeSensitivity(int choice);
@@ -415,6 +416,7 @@ enum
 #endif
     soundvol,
 #if PICO_ON_DEVICE
+    display,
     bootsel,
 #endif
     opt_end
@@ -444,6 +446,9 @@ static const menuitem_t OptionsMenu[]=
 #endif
     {1,VPATCH_NAME(M_SVOL),'s',	M_Sound},
 #if PICO_ON_DEVICE
+    // HDMI or DVI on the HDMI connector. Label and value drawn by
+    // M_DrawOptions, same as the Nes Pad entry above.
+    {1,VPATCH_NAME_INVALID,	'd',M_ChangeDisplay},
     // Label drawn by M_DrawOptions, same as the Nes Pad entry above. Last on
     // purpose: it resets the chip the moment it is picked, with no "are you
     // sure", so it wants to be the hardest row to land on by accident.
@@ -451,13 +456,24 @@ static const menuitem_t OptionsMenu[]=
 #endif
 };
 
+// The device adds three rows (Nes Pad, Display, Bootsel Mode), nine in all.
+// From vanilla's y=37 the last one would end at y=180, under the status bar
+// (y=168 and below), which is drawn over the menu. Started 13 lines higher,
+// title included, the last row ends at y=166.
+#if PICO_ON_DEVICE
+#define OPTIONS_Y       24
+#else
+#define OPTIONS_Y       37
+#endif
+#define OPTIONS_TITLE_Y (OPTIONS_Y - 22)
+
 menu_t  OptionsDef =
 {
     opt_end,
     &MainDef,
     OptionsMenu,
     M_DrawOptions,
-    60,37,
+    60,OPTIONS_Y,
     0
 };
 
@@ -1221,7 +1237,7 @@ vpatchname_t msgNames[2] = {VPATCH_NAME(M_MSGOFF), VPATCH_NAME(M_MSGON)};
 
 void M_DrawOptions(void)
 {
-    V_DrawPatchDirect(108, 15, VPATCH_HANDLE(VPATCH_NAME(M_OPTTTL)));
+    V_DrawPatchDirect(108, OPTIONS_TITLE_Y, VPATCH_HANDLE(VPATCH_NAME(M_OPTTTL)));
 
 #if !DOOM_TINY
     V_DrawPatchDirect(OptionsDef.x + 175, OptionsDef.y + LINEHEIGHT * detail,
@@ -1245,6 +1261,12 @@ void M_DrawOptions(void)
                       VPATCH_HANDLE(VPATCH_NAME(M_NESPAD)));
     V_DrawPatchDirect(OptionsDef.x + 120, OptionsDef.y + LINEHEIGHT * nespad,
                       VPATCH_HANDLE(msgNames[nes_pad_scheme]));
+
+    V_DrawPatchDirect(OptionsDef.x, OptionsDef.y + LINEHEIGHT * display,
+                      VPATCH_HANDLE(VPATCH_NAME(M_DISPLAY)));
+    V_DrawPatchDirect(OptionsDef.x + 120, OptionsDef.y + LINEHEIGHT * display,
+                      VPATCH_HANDLE(doom_display_is_dvi() ? VPATCH_NAME(M_DVI)
+                                                          : VPATCH_NAME(M_HDMI)));
 
     // Likewise built-in, and likewise label-only -- there is no value to show.
     V_DrawPatchDirect(OptionsDef.x, OptionsDef.y + LINEHEIGHT * bootsel,
@@ -1455,6 +1477,27 @@ void M_ChangeNesPad(int choice)
     players[consoleplayer].message = nes_pad_scheme
             ? "NES PAD LAYOUT ON: SELECT+START FOR MENU"
             : "NES PAD LAYOUT OFF";
+    message_dontfuckwithme = true;
+}
+
+//
+//      Switch the HDMI connector between HDMI and DVI. DVI is for monitors
+//      that do not accept HDMI; it carries no sound, which then plays on the
+//      board's own audio output. Stored in /settings_DOOM.dat at once.
+//
+void M_ChangeDisplay(int choice)
+{
+    // warning: unused parameter `int choice'
+    choice = 0;
+    doom_display_toggle();
+    // Stored at once, not on menu close as the other options are: the user
+    // sees the switch take effect, and a reset straight after it should keep
+    // it, as in the other ports.
+    doom_settings_flush();
+
+    players[consoleplayer].message = doom_display_is_dvi()
+            ? "DISPLAY: DVI"
+            : "DISPLAY: HDMI";
     message_dontfuckwithme = true;
 }
 

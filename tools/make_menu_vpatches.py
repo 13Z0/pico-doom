@@ -13,9 +13,9 @@
 # GNU General Public License for more details.
 #
 # DESCRIPTION:
-#	Builds the Options menu labels this port adds of its own ("Nes Pad:" and
-#	"Bootsel Mode") and writes them out as src/vpatch_builtin.c, vpatches the
-#	firmware carries itself.
+#	Builds the Options menu labels this port adds of its own ("Nes Pad:",
+#	"Bootsel Mode", "Display:" and its values "HDMI" and "DVI") and writes them
+#	out as src/vpatch_builtin.c, vpatches the firmware carries itself.
 #
 #	The other custom menu graphics in this repo (M_GAME, M_NETWK, ...) are
 #	injected into the WHD by whd_gen. These deliberately are not: adding a
@@ -103,6 +103,33 @@ def fold_duplicates(pix, pages):
             reps.append(idx)
     folded = [(k, v) for k, v in canon.items() if k != v]
     return [[None if c is None else canon[c] for c in row] for row in pix], folded
+
+
+def merge_rarest(pix, pal, limit=16):
+    """Bring a label down to `limit` colours by merging its rarest colour into
+    the nearest remaining one (by RGB distance), until it fits.
+
+    Only for what fold_duplicates() cannot fix: "HDMI" takes its letters from
+    four lumps and lands on 17 colours after folding. Three of them are
+    single stray pixels; the one merged, rgb(83,7,7), goes into rgb(79,0,0),
+    a step darker in the same ramp, on one pixel. Unlike the fold this is
+    lossy, so it runs only for a label that would not fit otherwise; every
+    label that fits is left exactly as cut.
+    """
+    merged = []
+    while True:
+        count = {}
+        for row in pix:
+            for c in row:
+                if c is not None:
+                    count[c] = count.get(c, 0) + 1
+        if len(count) <= limit:
+            return pix, merged
+        rare = min(count, key=lambda c: (count[c], c))
+        near = min((c for c in count if c != rare),
+                   key=lambda c: sum((a - b) ** 2 for a, b in zip(pal[c], pal[rare])))
+        merged.append((rare, near, count[rare]))
+        pix = [[near if c == rare else c for c in row] for row in pix]
 
 
 def patch_to_idx(b):
@@ -401,11 +428,41 @@ def main():
         ("e", "M_MESSG letter 1",  lambda: glyph("M_MESSG", 1, tail=True)),
     ]
 
+    #   Display  the stock "Display" heading, letter by letter
+    #   :        Messages:[8], after the same 2-column gap as in "Nes Pad:"
+    DISPLAY = [(c, "M_DISP letter %d" % i, (lambda i=i: glyph("M_DISP", i)))
+               for i, c in enumerate("Display")] + [
+        ("",  None,                lambda: gap(2)),
+        (":", "M_MESSG letter 8",  lambda: glyph("M_MESSG", 8, tail=True)),
+    ]
+
+    # The two values of "Display:", all capitals like "ON" and "OFF":
+    #   H  Hurt me plenty[0]      V  Sound Volume[4]
+    #   D  Display[0]             I  OPTIONS[3]
+    #   M  Mouse Sensitivity[0]
+    HDMI = [
+        ("H", "M_HURT letter 0",   lambda: glyph("M_HURT", 0)),
+        ("D", "M_DISP letter 0",   lambda: glyph("M_DISP", 0)),
+        ("M", "M_MSENS letter 0",  lambda: glyph("M_MSENS", 0)),
+        ("I", "M_OPTTTL letter 3", lambda: glyph("M_OPTTTL", 3, tail=True)),
+    ]
+    DVI = [
+        ("D", "M_DISP letter 0",   lambda: glyph("M_DISP", 0)),
+        ("V", "M_SVOL letter 4",   lambda: glyph("M_SVOL", 4)),
+        ("I", "M_OPTTTL letter 3", lambda: glyph("M_OPTTTL", 3, tail=True)),
+    ]
+
     LABELS = [
         ("vpatch_m_nespad",  "VPATCH_M_NESPAD",  "Nes Pad:",     "m_nespad.png",
          NESPAD),
         ("vpatch_m_bootsel", "VPATCH_M_BOOTSEL", "Bootsel Mode", "m_bootsel.png",
          BOOTSEL),
+        ("vpatch_m_display", "VPATCH_M_DISPLAY", "Display:",     "m_display.png",
+         DISPLAY),
+        ("vpatch_m_hdmi",    "VPATCH_M_HDMI",    "HDMI",         "m_hdmi.png",
+         HDMI),
+        ("vpatch_m_dvi",     "VPATCH_M_DVI",     "DVI",          "m_dvi.png",
+         DVI),
     ]
 
     pages = playpal_pages(lumps)
@@ -413,6 +470,7 @@ def main():
     for (ident, enum, text, png, sources) in LABELS:
         label = cat([thunk() for (_c, _note, thunk) in sources])
         label, folded = fold_duplicates(label, pages)
+        label, merged = merge_rarest(label, pal)
 
         # The patch carries its own palette of PLAYPAL indices; the pixels
         # become 4-bit indices into that.
@@ -436,9 +494,11 @@ def main():
                                         ident=ident, body=c_array(blob))
         table += "        %-22s // %s\n" % (ident + ",", enum)
 
-        print("%s  %dx%d, %d colours%s" % (png, w, h, len(palette),
+        print("%s  %dx%d, %d colours%s%s" % (png, w, h, len(palette),
               "" if not folded else "  (folded %s)" %
-              ", ".join("%d->%d" % kv for kv in folded)))
+              ", ".join("%d->%d" % kv for kv in folded),
+              "" if not merged else "  (merged %s)" %
+              ", ".join("%d->%d on %d px" % m for m in merged)))
         print("%s  %d bytes (%d header + %d palette + %d data)"
               % (ident, len(blob), 6, len(palette), len(blob) - 6 - len(palette)))
         for y in range(h):

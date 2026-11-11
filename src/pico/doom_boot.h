@@ -47,6 +47,16 @@ void __attribute__((noreturn)) doom_restart_game(void);
 // way out, because nothing else on this path does. Never returns.
 void __attribute__((noreturn)) doom_reboot_to_bootsel(void);
 
+// The display mode of the HDMI connector, true for DVI. The mode to start in:
+// the bootloader's DISPLAY= from /boot.txt when it started us, else the stored
+// setting, else the board default (DVI on the Murmulator M2).
+bool doom_display_boot_dvi(void);
+
+// The running mode, and the Options menu's "Display" item: switches the
+// picture and the sound, and stores the choice in /settings_DOOM.dat.
+bool doom_display_is_dvi(void);
+void doom_display_toggle(void);
+
 #ifdef __cplusplus
 }
 #endif

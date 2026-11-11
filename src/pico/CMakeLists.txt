@@ -22,6 +22,7 @@ if (PICO_ON_DEVICE)
             ${CMAKE_CURRENT_LIST_DIR}/doom_usb_frame.c
             ${CMAKE_CURRENT_LIST_DIR}/doom_wiipad.cpp
             ${CMAKE_CURRENT_LIST_DIR}/i_usbhid.cpp
+            ${CMAKE_CURRENT_LIST_DIR}/pico_bootcfg.c
             )
     # WS2812 program for the Fruit Jam VU meter, a verbatim copy of
     # pico_shared/ws2812.pio. Generated here rather than next to video_doom.pio

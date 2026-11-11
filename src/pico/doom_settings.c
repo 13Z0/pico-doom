@@ -17,7 +17,7 @@
 //	(NO_USE_SAVE_CONFIG / NO_USE_BOUND_CONFIG), so this stands in for it,
 //	covering exactly the settings this port can actually change: the two
 //	volumes, messages, screen size, mouse sensitivity, gamma, the FPS
-//	overlay and the NES pad layout.
+//	overlay, the NES pad layout and the display mode (HDMI or DVI).
 //
 //	Format follows pico-infonesPlus' /settings_<TAG>.dat convention
 //	(pico_shared/settings.cpp): a fixed-size record with a leading version,
@@ -37,15 +37,17 @@
 
 #include "doom_sdcard.h"
 #include "doom_settings.h"
+#include "pico_bootcfg.h"
 
 #define DOOM_SETTINGS_PATH    "/settings_DOOM.dat"
-#define DOOM_SETTINGS_VERSION 2
+#define DOOM_SETTINGS_VERSION 3
 
-// Version 1 is the same 16 bytes without the NES pad layout, and settings_gather
-// has always zeroed the record, so the byte the field now occupies reads back as
-// "off" out of every file version 1 ever wrote. Accepting it costs one comparison
+// Version 1 is the same 16 bytes without the NES pad layout, and version 2
+// without the display mode. settings_gather has always zeroed the record, so
+// the bytes those fields now occupy read back as "off" and "board default" out
+// of every file the older versions wrote. Accepting them costs one comparison
 // and saves everyone their volumes; the shadow keeps the version it read, so the
-// next flush quietly rewrites the file as version 2.
+// next flush quietly rewrites the file as version 3.
 #define DOOM_SETTINGS_VERSION_MIN 1
 
 // The engine globals this covers. Declared here rather than pulled in from the
@@ -73,7 +75,8 @@ typedef struct {
     int8_t usegamma;           // 0..4
     int8_t show_fps;           // 0..1
     int8_t nes_pad_scheme;     // 0..1
-    int8_t reserved[6];        // zeroed; bump the version before using any
+    int8_t display_mode;       // PICO_DISPLAY_*: 0 board default, 1 HDMI, 2 DVI
+    int8_t reserved[5];        // zeroed; bump the version before using any
 } doom_settings_t;
 
 static_assert(sizeof(doom_settings_t) == 16, "settings record is an on-disk format");
@@ -83,6 +86,13 @@ static_assert(sizeof(doom_settings_t) == 16, "settings record is an on-disk form
 // file on a fresh card.
 static doom_settings_t shadow;
 static bool shadow_valid;
+
+// The display mode setting (PICO_DISPLAY_*). Not an engine global: the display
+// starts from it (doom_display_boot_dvi) and the Options menu sets it.
+// `display_known` says it has been read from the card, by the load or by an
+// early peek for an error screen that comes up before the load.
+static int8_t display_pref = PICO_DISPLAY_DEFAULT;
+static bool display_known;
 
 static int8_t clamp8(int value, int lo, int hi)
 {
@@ -105,6 +115,7 @@ static void settings_gather(doom_settings_t *rec)
     rec->show_fps          = show_fps ? 1 : 0;
 #endif
     rec->nes_pad_scheme    = nes_pad_scheme ? 1 : 0;
+    rec->display_mode      = display_pref;
 }
 
 static void settings_apply(const doom_settings_t *rec)
@@ -124,12 +135,16 @@ static void settings_apply(const doom_settings_t *rec)
     // Not a plain assignment: the NES layout has no run button, so the flag
     // drags joybspeed along with it.
     M_SetNesPadScheme(rec->nes_pad_scheme);
+    display_pref = clamp8(rec->display_mode, PICO_DISPLAY_DEFAULT, PICO_DISPLAY_DVI);
 }
 
 void doom_settings_load(void)
 {
     doom_settings_t rec;
     uint32_t got = 0;
+
+    // Whatever the file holds now wins over an early peek.
+    display_known = true;
 
     if (!doom_sd_read_file(DOOM_SETTINGS_PATH, &rec, sizeof(rec), &got)) {
         printf("settings: no usable " DOOM_SETTINGS_PATH ", using defaults\n");
@@ -154,10 +169,33 @@ void doom_settings_load(void)
     shadow_valid = true;
 
     printf("settings: loaded sfx %d music %d messages %d size %d mouse %d"
-           " gamma %d fps %d nespad %d\n",
+           " gamma %d fps %d nespad %d display %d\n",
            rec.sfx_volume, rec.music_volume, rec.show_messages,
            rec.screenblocks, rec.mouse_sensitivity, rec.usegamma, rec.show_fps,
-           rec.nes_pad_scheme);
+           rec.nes_pad_scheme, rec.display_mode);
+}
+
+int doom_settings_display_pref(void)
+{
+    if (!display_known) {
+        // Asked before doom_settings_load (an error screen during the WAD
+        // load): read just this byte, applying nothing else. Without a card
+        // it stays unknown and the board default applies.
+        doom_settings_t rec;
+        if (doom_sd_peek_file(DOOM_SETTINGS_PATH, &rec, sizeof(rec))) {
+            display_known = true;
+            if (rec.version >= DOOM_SETTINGS_VERSION_MIN && rec.version <= DOOM_SETTINGS_VERSION) {
+                display_pref = clamp8(rec.display_mode, PICO_DISPLAY_DEFAULT, PICO_DISPLAY_DVI);
+            }
+        }
+    }
+    return display_pref;
+}
+
+void doom_settings_set_display_pref(int pref)
+{
+    // Written by the next doom_settings_flush (on menu close).
+    display_pref = clamp8(pref, PICO_DISPLAY_DEFAULT, PICO_DISPLAY_DVI);
 }
 
 void doom_settings_flush(void)

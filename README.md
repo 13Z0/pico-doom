@@ -208,6 +208,23 @@ The exit screen is a true 80×25 VGA text mode: 8×16 glyphs, the full CP437 set
 and the 16-colour attribute byte including blink, rendered as 640×400 centred in
 the 640×480 HDMI signal.
 
+## Display mode
+
+The HDMI connector sends either an HDMI or a DVI signal. HDMI carries picture and
+sound. DVI carries the picture only and is meant for monitors and TVs that do not
+accept an HDMI signal; the sound then plays on the board's own audio output only
+(the speaker of the Fruit Jam or headphones while they are plugged in, the I2S DAC
+or the PWM audio jack on the other boards).
+
+The mode is set under **Options → Display**. The picture switches at once, and the
+choice is stored in `/settings_DOOM.dat` on the SD card at the same moment.
+Without a stored choice the Murmulator M2 starts in DVI and the other boards in
+HDMI.
+
+When the game is started from the pico-bootLoader, it uses the display mode set
+in the bootloader's menu (`DISPLAY=` in `/boot.txt`) instead. A change made in the
+game then applies until the next start.
+
 ## Bootsel mode
 
 **Options → Bootsel Mode** resets the board into the RP2350's own ROM
