@@ -18,6 +18,10 @@ if (PICO_SDK_PATH)
         message(FATAL_ERROR "PICO_PIO_USB_PATH=${PICO_PIO_USB_PATH} has no src/pio_usb.c.\
  Point it at a Pico-PIO-USB checkout, or unset it for a native-USB board.")
     endif()
+    # Board headers the pico-sdk does not ship (waveshare_rp2350_pizero for
+    # HW_CONFIG 18, copied verbatim from pico_shared/boards). The SDK's own
+    # headers are still found by name for every other board.
+    list(APPEND PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/boards)
     include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
     add_subdirectory(${PICO_EXTRAS_PATH} pico_extras)
 endif()

@@ -55,7 +55,7 @@ done
     echo "| Settings | \`/settings_DOOM.dat\` |"
     echo
     echo "Settings covers the volumes, messages, screen size, mouse sensitivity, gamma,"
-    echo "the FPS overlay and the NES pad layout. \`/SAVES\` is created for you on the"
+    echo "the FPS overlay, the NES pad layout and the display mode. \`/SAVES\` is created for you on the"
     echo "first save, and the naming matches pico-infonesPlus so one card can serve both."
     echo
     echo "The game still runs without a card; you just cannot save, and settings reset"
@@ -72,7 +72,8 @@ done
     echo
     echo "Requires PSRAM on the board (onboard on the Fruit Jam and Murmulator M2; a"
     echo "Pimoroni Pico Plus 2, a wired APS6404 or a PSRAM chip fitted to the Pico 2 on"
-    echo "GPIO 8 on the other three). Do **not** flash a \`doom1-whx\` file alongside"
+    echo "GPIO 8 on the next three; a PSRAM chip soldered onto the Waveshare RP2350-PiZero"
+    echo "on the PCB by Liu Szuping). Do **not** flash a \`doom1-whx\` file alongside"
     echo "these builds."
     echo
     echo "### Using the pico-bootLoader"

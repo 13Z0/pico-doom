@@ -1,7 +1,7 @@
 # Resolve the Pico toolchain from the environment.
 #
 # Sourced (not executed) by every <board>-build*.sh script, so the same checks
-# run for all 16 build configurations without being duplicated 16 times:
+# run for all 24 build configurations without being duplicated 24 times:
 #
 #     TAG=fruitjam
 #     NEED_PIO_USB=1        # only the boards whose USB host runs on PIO

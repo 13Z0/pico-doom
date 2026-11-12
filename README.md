@@ -1,14 +1,15 @@
 # pico-doom — Doom on RP2350 boards with HSTX video
 
 A port of **Doom** to the RP2350. The reference board is the
-[Adafruit Fruit Jam](https://www.adafruit.com/product/6200) (RP2350B); four more
+[Adafruit Fruit Jam](https://www.adafruit.com/product/6200) (RP2350B); five more
 HSTX boards build from the same tree — Pico 2 with the Adafruit DVI Breakout, the
-Murmulator M2, the Adafruit Feather RP2350, and the Olimex RP2040-PICO-PC with a
-Pico 2 (see [Other supported boards](#other-supported-boards)).
+Murmulator M2, the Adafruit Feather RP2350, the Olimex RP2040-PICO-PC with a
+Pico 2, and the Waveshare RP2350-PiZero on the PCB by Liu Szuping (see
+[Other supported boards](#other-supported-boards)).
 
 It runs the full shareware `DOOM1.WAD` from flash, drives an HDMI display over
 HSTX, plays music and sound effects — over that same HDMI link *or* through an
-I2S DAC (TLV320DAC3100 or PCM5100A) or a PWM audio jack to speaker/headphones — and takes input from
+I2S DAC (TLV320DAC3100, PCM5100A or PCM5102) or a PWM audio jack to speaker/headphones — and takes input from
 USB keyboards, mice, and gamepads, plus NES/SNES pads on the boards that have
 those ports.
 
@@ -23,7 +24,7 @@ see [README-chocolate.md](README-chocolate.md).
 ## Quick start — flash a prebuilt release
 
 **You do not have to build anything.** Every
-[release](../../releases) ships ready-to-flash `.uf2` files for all five boards,
+[release](../../releases) ships ready-to-flash `.uf2` files for all six boards,
 plus the converted shareware WAD, the `whd_gen` host tool and the Gerber files
 of the [PicoNES PCB](#picones-pcb). Grab the newest
 one and you are playing in a couple of minutes.
@@ -39,6 +40,7 @@ one and you are playing in a couple of minutes.
    | Murmulator M2 (RP2350) | `doom_tiny_murmulatorm2.uf2` | `doom1-whx.uf2` |
    | Adafruit Feather RP2350 + TLV320 breakout | `doom_tiny_featherrp2350.uf2` | `doom1-whx.uf2` |
    | Olimex RP2040-PICO-PC + Pico 2 | `doom_tiny_olimexpicopc.uf2` | `doom1-whx.uf2` |
+   | Waveshare RP2350-PiZero on the PCB by Liu Szuping | `doom_tiny_pizeroliupcb.uf2` | `doom1-whx.uf2` |
 
 2. **Plug in your peripherals first** — HDMI display, and a USB keyboard, mouse
    or [gamepad](#controls). USB hot-plug is not reliable, so the devices have to
@@ -84,7 +86,7 @@ the build host is for compiling from source.
 
 **Hardware**
 
-* An Adafruit Fruit Jam (RP2350B) board — or one of the four
+* An Adafruit Fruit Jam (RP2350B) board — or one of the five
   [other supported boards](#other-supported-boards).
 * An HDMI display and cable.
 * At least one USB input device — a keyboard, a mouse, and/or a supported
@@ -114,8 +116,9 @@ the build host is for compiling from source.
   The SDK must have its own submodules checked out
   (`git -C $PICO_SDK_PATH submodule update --init`): tinyusb comes from the SDK's
   `lib/tinyusb`, not from this repository. `PICO_PIO_USB_PATH` is only needed by
-  the boards whose USB host runs on PIO — the Fruit Jam and the Feather RP2350;
-  the Pico 2, Murmulator M2 and Olimex RP2040-PICO-PC builds use native USB and
+  the boards whose USB host runs on PIO — the Fruit Jam, the Feather RP2350 and
+  the Waveshare RP2350-PiZero on Liu Szuping's PCB; the Pico 2, Murmulator M2 and
+  Olimex RP2040-PICO-PC builds use native USB and
   pass `-DENABLE_PIO_USB=0`. Every build script validates these paths up front via
   [pico-env.sh](pico-env.sh) and stops with a clear message if one is wrong.
 
@@ -221,9 +224,10 @@ choice is stored in `/settings_DOOM.dat` on the SD card at the same moment.
 Without a stored choice the Murmulator M2 starts in DVI and the other boards in
 HDMI.
 
-When the game is started from the pico-bootLoader, it uses the display mode set
-in the bootloader's menu (`DISPLAY=` in `/boot.txt`) instead. A change made in the
-game then applies until the next start.
+From pico-bootLoader v0.10 on, a game started from the bootloader uses the display
+mode set in the bootloader's menu (`DISPLAY=` in `/boot.txt`) instead. A change made in
+the game then applies until the next start. Older bootloader versions do not know the
+`DISPLAY=` key: with it in `/boot.txt` they stop with "BOOT.TXT INVALID".
 
 ## Bootsel mode
 
@@ -288,6 +292,7 @@ file — panics with a descriptive UART message.
 | Murmulator M2 (`murmulatorm2`) | onboard (GPIO 8) |
 | Feather RP2350 (`featherrp2350`) | external APS6404 wired to GPIO 8 |
 | Olimex RP2040-PICO-PC + Pico 2 (`olimexpicopc`) | a PSRAM chip fitted on GPIO 8 (a stock Pico 2 has none) |
+| Waveshare RP2350-PiZero on Liu Szuping's PCB (`pizeroliupcb`) | a PSRAM chip soldered onto the RP2350-PiZero (GPIO 47); see the [notes on this board](#other-supported-boards) |
 
 ## Saved games and settings
 
@@ -308,8 +313,9 @@ loaded as garbage.
 
 The settings file covers everything this build can actually change: SFX and
 music volume, messages on/off, screen size, mouse sensitivity, gamma (**F11**),
-the FPS overlay (**\\**) and the NES pad layout. Changes are written when you
-leave the menus, when you quit, and on the way into
+the FPS overlay (**\\**), the NES pad layout and the display mode. The display mode
+is stored at once; the other changes are written when you leave the menus, when you
+quit, and on the way into
 [Bootsel Mode](#bootsel-mode), so gamma or screen size changed with a hotkey
 mid-game is stored the next time you open and close the menu. A missing or
 damaged file is ignored and the built-in defaults are used; a file from an older
@@ -484,7 +490,7 @@ warning rather than an error, so an unrelated commit cannot block a release.
 
 ## Other supported boards
 
-Besides the Fruit Jam, four more RP2350 HSTX boards from the
+Besides the Fruit Jam, five more RP2350 HSTX boards from the
 [pico_shared](https://github.com/PicoPlus-devel/pico_shared) family are
 supported. Each has its own pin header (`<tag>_cflags.h`) and script pair —
 `<tag>-build.sh` (standalone) and `<tag>-build-forbootloader.sh`
@@ -498,13 +504,14 @@ supported. Each has its own pin header (`<tag>_cflags.h`) and script pair —
 | `murmulatorm2` | 13 | Murmulator M2 (Pico 2 module) | native USB (OTG adapter) | HDMI + PCM5100A | 2× NES/SNES, Wii (GPIO 0/1) |
 | `featherrp2350` | 14 | Adafruit Feather RP2350 + TLV320DAC3100 breakout | PIO-USB on GPIO 24/25 (USB Host FeatherWing) | HDMI + TLV320 | Wii (STEMMA QT, GPIO 2/3) |
 | `olimexpicopc` | 15 | Olimex RP2040-PICO-PC with a Raspberry Pi Pico 2 | native USB (USB-A socket) | HDMI + PWM audio jack (GPIO 28/27) | 1× NES/SNES (UEXT: CLK 5, LAT 9, DATA 20) |
+| `pizeroliupcb` | 18 | Waveshare RP2350-PiZero on the PCB by Liu Szuping | PIO-USB on GPIO 28/29 (the PiZero's PIO-USB port) | HDMI + PCM5102 (audio jack) | 2× NES/SNES |
 
 The Fruit Jam itself has no NES/SNES ports, but does have a Wii extension port
 on its STEMMA QT connector (GPIO 20/21).
 
 Notes:
 
-* **USB stack** — the Fruit Jam and Feather run the USB host on Pico-PIO-USB;
+* **USB stack** — the Fruit Jam, Feather and `pizeroliupcb` run the USB host on Pico-PIO-USB;
   the other three use the RP2350's native USB controller (plug gamepads in via
   an OTG adapter, or into the USB-A socket of the Olimex board). The transport is fixed at build time: the board header's
   `HAS_USBPIO` define and the script's `-DENABLE_PIO_USB=` value must agree.
@@ -512,7 +519,7 @@ Notes:
   on HDMI *and* the I2S DAC simultaneously instead of switching sinks. The
   Olimex board has no I2S DAC; it plays on HDMI and its PWM audio jack
   (left GPIO 28, right GPIO 27) simultaneously.
-* **NES/SNES controllers** — configs 2 and 13 poll two legacy controller
+* **NES/SNES controllers** — configs 2, 13 and 18 poll two legacy controller
   ports, and config 15 one port on its UEXT connector, through the vendored
   pico_shared `nespad` PIO driver; SNES pads are auto-detected. They use the same layout as the USB pads (see
   [Gamepad](#gamepad) below), including the optional NES pad layout.
@@ -531,6 +538,21 @@ Notes:
   Olimex board the last 260 KB of flash (from `0x103BF000`) hold pico-launcher;
   the WHX ends about 30 KB below it. Standalone builds (WHX at `0x10080000`) fit
   every board.
+* **Waveshare RP2350-PiZero on Liu Szuping's PCB** — video comes from the HDMI
+  port of the PCB (the mini HDMI port of the PiZero is not used) and sound from
+  its audio jack; the SD card is the PiZero's own card slot. Use the
+  `pizeroliupcb` firmware; the pico_shared PiZero firmware (HW_CONFIG 7) does not
+  apply to this PCB. A USB hub on the PIO-USB port does not work, so only one USB
+  device can be used at a time. The PCB's ESP32 socket (for Bluetooth
+  controllers through [BlueRetro](https://github.com/darthcloud/blueretro)) shares
+  the controller-port pins: remove the module to use the NES/SNES ports.
+  `doom_tiny_full` needs a PSRAM chip soldered onto the PiZero. A PiZero with
+  PSRAM and a non-Winbond flash chip (such as Puya) locks up when overclocked
+  until the flash's QE bit is set once; see
+  [PSRAM with a non-Winbond flash chip](https://github.com/PicoPlus-devel/pico-infonesPlus#psram-with-a-non-winbond-flash-chip).
+  The PCB itself is described in
+  [PCB with Waveshare RP2350-PiZero](https://github.com/PicoPlus-devel/pico-infonesPlus#pcb-with-waveshare-rp2350-pizero);
+  the design is not yet available.
 * **Olimex RP2040-PICO-PC** — the board's PS/2 port (GPIO 0/1) is not supported,
   and the serial console is disabled so that those pins stay free.
 
