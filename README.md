@@ -550,6 +550,9 @@ Notes:
   PSRAM and a non-Winbond flash chip (such as Puya) locks up when overclocked
   until the flash's QE bit is set once; see
   [PSRAM with a non-Winbond flash chip](https://github.com/PicoPlus-devel/pico-infonesPlus#psram-with-a-non-winbond-flash-chip).
+  During play, some TVs and monitors lose the picture for a few seconds at a
+  time, while others show it without interruption. This is a limitation of the
+  RP2350-PiZero at 384 MHz, the clock Doom runs at.
   The PCB itself is described in
   [PCB with Waveshare RP2350-PiZero](https://github.com/PicoPlus-devel/pico-infonesPlus#pcb-with-waveshare-rp2350-pizero);
   the design is not yet available.
